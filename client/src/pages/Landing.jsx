@@ -1,8 +1,20 @@
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  // While checking auth status, show loading screen
+  if (loading) return <LoadingScreen />;
+
+  // Already logged in and onboarded → go straight to home
+  if (user && user.onboardingComplete) return <Navigate to="/home" replace />;
+
+  // Logged in but onboarding not done → resume onboarding
+  if (user && !user.onboardingComplete) return <Navigate to="/onboarding/gender-age" replace />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center px-4">
