@@ -8,20 +8,36 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // On app load: try profile, if 401 try refresh first, then profile again
+    // On app load: check if we have tokens in localStorage
+    // If access token exists, fetch profile. If 401, try refresh.
     const rehydrate = async () => {
+      const accessToken = localStorage.getItem('accessToken');
+      const refreshToken = localStorage.getItem('refreshToken');
+
+      if (!accessToken && !refreshToken) {
+        // No tokens at all — definitely logged out
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await api.get('/api/user/profile', { _skipRefresh: true });
         setUser(res.data.user);
       } catch (err) {
-        if (err.response?.status === 401) {
-          // Access token expired — try refresh token before giving up
+        if (err.response?.status === 401 && refreshToken) {
+          // Access token expired — try to refresh
           try {
-            await api.post('/api/auth/refresh-token');
-            const res = await api.get('/api/user/profile', { _skipRefresh: true });
-            setUser(res.data.user);
+            const refreshRes = await api.post('/api/auth/refresh-token', { refreshToken });
+            localStorage.setItem('accessToken', refreshRes.data.accessToken);
+            localStorage.setItem('refreshToken', refreshRes.data.refreshToken);
+
+            const profileRes = await api.get('/api/user/profile', { _skipRefresh: true });
+            setUser(profileRes.data.user);
           } catch {
-            setUser(null); // refresh token also expired or invalid
+            // Refresh failed — clear tokens
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            setUser(null);
           }
         } else {
           setUser(null);
@@ -30,13 +46,20 @@ export function AuthProvider({ children }) {
         setLoading(false);
       }
     };
+
     rehydrate();
   }, []);
 
-  const login = (userData) => setUser(userData);
+  const login = (userData, accessToken, refreshToken) => {
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    setUser(userData);
+  };
 
   const logout = async () => {
     try { await api.post('/api/auth/logout'); } catch {}
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     setUser(null);
   };
 

@@ -5,15 +5,6 @@ import User from '../models/User.model.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/generateTokens.js';
 import { sendOtpEmail } from '../utils/sendEmail.js';
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  // With Vercel proxy, cookies are first-party → 'lax' works and is more compatible
-  // than 'none' (which requires secure and has Safari issues)
-  sameSite: 'lax',
-  secure: process.env.NODE_ENV === 'production',
-  path: '/',
-};
-
 function generateOtp() {
   return String(crypto.randomInt(100000, 999999));
 }
@@ -21,23 +12,13 @@ function generateOtp() {
 export async function signup(req, res) {
   const { name, email, password } = req.body;
 
-  // Validate inputs
-  if (!name || !name.trim()) {
-    return res.status(400).json({ message: 'Name is required.' });
-  }
+  if (!name || !name.trim()) return res.status(400).json({ message: 'Name is required.' });
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!email || !emailRegex.test(email)) {
-    return res.status(400).json({ message: 'A valid email is required.' });
-  }
-  if (!password || password.length < 8) {
-    return res.status(400).json({ message: 'Password must be at least 8 characters.' });
-  }
+  if (!email || !emailRegex.test(email)) return res.status(400).json({ message: 'A valid email is required.' });
+  if (!password || password.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters.' });
 
-  // Check duplicate email
   const existing = await User.findOne({ email: email.toLowerCase().trim() });
-  if (existing) {
-    return res.status(409).json({ message: 'Email already in use.' });
-  }
+  if (existing) return res.status(409).json({ message: 'Email already in use.' });
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const plainOtp = generateOtp();
@@ -53,7 +34,6 @@ export async function signup(req, res) {
   });
 
   await sendOtpEmail(email, plainOtp);
-
   return res.status(201).json({ message: 'Account created. Check your email for OTP.' });
 }
 
@@ -61,18 +41,11 @@ export async function verifyOtp(req, res) {
   const { email, otp } = req.body;
 
   const user = await User.findOne({ email: email?.toLowerCase().trim() });
-  if (!user) {
-    return res.status(400).json({ message: 'Invalid request.' });
-  }
-
-  if (!user.otpExpiry || user.otpExpiry < Date.now()) {
-    return res.status(400).json({ message: 'OTP expired.' });
-  }
+  if (!user) return res.status(400).json({ message: 'Invalid request.' });
+  if (!user.otpExpiry || user.otpExpiry < Date.now()) return res.status(400).json({ message: 'OTP expired.' });
 
   const valid = await bcrypt.compare(String(otp), user.otp);
-  if (!valid) {
-    return res.status(400).json({ message: 'Invalid OTP.' });
-  }
+  if (!valid) return res.status(400).json({ message: 'Invalid OTP.' });
 
   user.isVerified = true;
   user.otp = undefined;
@@ -86,18 +59,11 @@ export async function login(req, res) {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email: email?.toLowerCase().trim() });
-  if (!user) {
-    return res.status(401).json({ message: 'Invalid credentials.' });
-  }
-
-  if (!user.isVerified) {
-    return res.status(403).json({ message: 'Please verify your email first.' });
-  }
+  if (!user) return res.status(401).json({ message: 'Invalid credentials.' });
+  if (!user.isVerified) return res.status(403).json({ message: 'Please verify your email first.' });
 
   const passwordMatch = await bcrypt.compare(password, user.password);
-  if (!passwordMatch) {
-    return res.status(401).json({ message: 'Invalid credentials.' });
-  }
+  if (!passwordMatch) return res.status(401).json({ message: 'Invalid credentials.' });
 
   const accessToken = generateAccessToken(user._id);
   const refreshToken = generateRefreshToken(user._id);
@@ -105,10 +71,11 @@ export async function login(req, res) {
   user.refreshToken = refreshToken;
   await user.save();
 
-  res.cookie('accessToken', accessToken, { ...COOKIE_OPTIONS, maxAge: 15 * 60 * 1000 });
-  res.cookie('refreshToken', refreshToken, { ...COOKIE_OPTIONS, maxAge: 7 * 24 * 60 * 60 * 1000 });
-
+  // Return tokens in response body — client stores in localStorage
+  // This avoids cross-origin cookie issues with Vercel + Render deployment
   return res.status(200).json({
+    accessToken,
+    refreshToken,
     user: {
       _id: user._id,
       name: user.name,
@@ -120,23 +87,19 @@ export async function login(req, res) {
 }
 
 export async function logout(req, res) {
-  res.clearCookie('accessToken', COOKIE_OPTIONS);
-  res.clearCookie('refreshToken', COOKIE_OPTIONS);
-
   const user = await User.findById(req.user.id);
   if (user) {
     user.refreshToken = null;
     await user.save();
   }
-
   return res.status(200).json({ message: 'Logged out successfully.' });
 }
 
 export async function refreshToken(req, res) {
-  const token = req.cookies?.refreshToken;
-  if (!token) {
-    return res.status(401).json({ message: 'Unauthorized.' });
-  }
+  // Accept refresh token from request body (localStorage-based auth)
+  const token = req.body?.refreshToken || req.cookies?.refreshToken;
+
+  if (!token) return res.status(401).json({ message: 'Unauthorized.' });
 
   let decoded;
   try {
@@ -146,23 +109,26 @@ export async function refreshToken(req, res) {
   }
 
   const user = await User.findById(decoded.id);
-  if (!user || user.refreshToken !== token) {
-    return res.status(401).json({ message: 'Unauthorized.' });
-  }
+  if (!user || user.refreshToken !== token) return res.status(401).json({ message: 'Unauthorized.' });
 
   const newAccessToken = generateAccessToken(user._id);
-  res.cookie('accessToken', newAccessToken, { ...COOKIE_OPTIONS, maxAge: 15 * 60 * 1000 });
 
-  return res.status(200).json({ message: 'Token refreshed.' });
+  // Update stored refresh token (rotation for security)
+  const newRefreshToken = generateRefreshToken(user._id);
+  user.refreshToken = newRefreshToken;
+  await user.save();
+
+  return res.status(200).json({
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
+  });
 }
 
 export async function resendOtp(req, res) {
   const { email } = req.body;
 
   const user = await User.findOne({ email: email?.toLowerCase().trim() });
-  if (!user) {
-    return res.status(400).json({ message: 'No account found with that email.' });
-  }
+  if (!user) return res.status(400).json({ message: 'No account found with that email.' });
 
   const plainOtp = generateOtp();
   const hashedOtp = await bcrypt.hash(plainOtp, 10);
@@ -172,6 +138,5 @@ export async function resendOtp(req, res) {
   await user.save();
 
   await sendOtpEmail(email, plainOtp);
-
   return res.status(200).json({ message: 'OTP resent. Check your email.' });
 }

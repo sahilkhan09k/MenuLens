@@ -31,7 +31,7 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await api.post('/api/auth/login', form);
-      login(res.data.user);
+      login(res.data.user, res.data.accessToken, res.data.refreshToken);
       navigate('/home');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed');
