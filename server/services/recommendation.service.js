@@ -425,21 +425,17 @@ export function generateTags(dish, score) {
 }
 
 // ── Classification — 4 tiers ──────────────────────────────────────────────────
-// Research basis: Nutri-Score (A-E), Australia Health Star Rating — multi-tier
-// systems reduce the "everything is neutral" problem on typical restaurant menus
-//
-// Tier 1 — Recommended  (≥65): Actively good for your goal
-// Tier 2 — Good Choice  (45–64): Solid option, no red flags
-// Tier 3 — Neutral      (26–44): Neither good nor bad
-// Tier 4 — Avoid        (≤25 or allergen): Conflicts with goal or health
 
-export function classifyDish(dish) {
-  const allergenCount = (dish.allergenFlags || []).length;
+export function classifyDish(dish, userProfile = {}) {
   const score = dish.matchScore;
+  const userAllergies = userProfile.allergies || [];
 
-  if (allergenCount > 0) return 'avoid';       // allergens always avoid, no exceptions
-  if (score <= 25)       return 'avoid';
-  if (score >= 65)       return 'recommended';
-  if (score >= 45)       return 'good';        // new tier
+  // Only avoid if the dish contains an allergen the USER is actually allergic to
+  const hasUserAllergen = (dish.allergenFlags || []).some(a => userAllergies.includes(a));
+  if (hasUserAllergen) return 'avoid';
+
+  if (score <= 25)  return 'avoid';
+  if (score >= 65)  return 'recommended';
+  if (score >= 45)  return 'good';
   return 'neutral';
 }

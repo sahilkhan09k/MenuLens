@@ -187,7 +187,7 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
 
       const matchScore = scoreDish(dishPayload, userProfile);
       const tags = generateTags(dishPayload, matchScore);
-      const classification = classifyDish({ ...dishPayload, matchScore });
+      const classification = classifyDish({ ...dishPayload, matchScore }, userProfile);
 
       const dish = await Dish.create({
         scanId: scan._id,

@@ -65,10 +65,10 @@ export default function Results() {
   }
 
   const dishes = [...(scan.dishes || [])].sort((a, b) => b.matchScore - a.matchScore);
-  // Allergens always go to avoid first — no overlap possible
-  const avoid = dishes.filter(d => d.allergenFlags?.length > 0 || d.matchScore <= 25);
+  // Avoid: score ≤ 25 OR has an allergen the user actually declared
+  // Do NOT avoid dishes just because they contain dairy/gluten if user has no such allergy
+  const avoid = dishes.filter(d => d.matchScore <= 25);
   const avoidIds = new Set(avoid.map(d => d._id));
-  // Tiers built from remaining dishes only
   const recommended = dishes.filter(d => !avoidIds.has(d._id) && d.matchScore >= 65);
   const good        = dishes.filter(d => !avoidIds.has(d._id) && d.matchScore >= 45 && d.matchScore < 65);
   const recommendedIds = new Set(recommended.map(d => d._id));
