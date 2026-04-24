@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+// In production: requests go to /api/* which Vercel proxies to Render backend
+// This makes cookies first-party and solves cross-origin session persistence
+// In development: requests go directly to localhost:5000
+const baseURL = import.meta.env.DEV
+  ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000')
+  : '';  // empty = relative URLs, proxied by Vercel
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  baseURL,
   withCredentials: true,
 });
 

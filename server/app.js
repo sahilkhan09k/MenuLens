@@ -12,24 +12,21 @@ import feedbackRoutes from './routes/feedback.routes.js';
 
 const app = express();
 
-// CORS — allow credentials from the client origin
+// CORS — in production, frontend proxies via Vercel so requests appear same-origin
+// Only need to allow localhost for local development
 app.use(cors({
   origin: (origin, callback) => {
-    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
-    const allowed = [
-      clientUrl,
-      clientUrl + '/',                             // trailing slash variant
-      'http://localhost:5173',
-      /^http:\/\/192\.168\.\d+\.\d+:5173$/,        // any LAN device
-    ];
-    if (!origin) return callback(null, true);       // server-to-server / curl
-    const normalizedOrigin = origin.replace(/\/$/, '');
-    const ok = allowed.some(p =>
-      typeof p === 'string'
-        ? p.replace(/\/$/, '') === normalizedOrigin
-        : p.test(origin)
-    );
-    ok ? callback(null, true) : callback(new Error('CORS blocked: ' + origin));
+    // Allow no-origin (server-to-server, curl) and localhost dev
+    if (!origin || origin.startsWith('http://localhost') || origin.match(/^http:\/\/192\.168\.\d+\.\d+/)) {
+      return callback(null, true);
+    }
+    // In production, Vercel proxy makes requests appear as same-origin — no CORS header needed
+    // But allow the Vercel domain as fallback
+    const clientUrl = (process.env.CLIENT_URL || '').replace(/\/$/, '');
+    if (clientUrl && origin.replace(/\/$/, '') === clientUrl) {
+      return callback(null, true);
+    }
+    callback(new Error('CORS blocked: ' + origin));
   },
   credentials: true,
 }));

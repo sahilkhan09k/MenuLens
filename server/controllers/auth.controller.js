@@ -7,8 +7,11 @@ import { sendOtpEmail } from '../utils/sendEmail.js';
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  // With Vercel proxy, cookies are first-party → 'lax' works and is more compatible
+  // than 'none' (which requires secure and has Safari issues)
+  sameSite: 'lax',
   secure: process.env.NODE_ENV === 'production',
+  path: '/',
 };
 
 function generateOtp() {
