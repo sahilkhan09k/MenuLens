@@ -8,11 +8,29 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Use a direct fetch without the interceptor to avoid refresh loops on initial load
-    api.get('/api/user/profile', { _skipRefresh: true })
-      .then(res => setUser(res.data.user))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
+    // On app load: try profile, if 401 try refresh first, then profile again
+    const rehydrate = async () => {
+      try {
+        const res = await api.get('/api/user/profile', { _skipRefresh: true });
+        setUser(res.data.user);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          // Access token expired — try refresh token before giving up
+          try {
+            await api.post('/api/auth/refresh-token');
+            const res = await api.get('/api/user/profile', { _skipRefresh: true });
+            setUser(res.data.user);
+          } catch {
+            setUser(null); // refresh token also expired or invalid
+          }
+        } else {
+          setUser(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    rehydrate();
   }, []);
 
   const login = (userData) => setUser(userData);

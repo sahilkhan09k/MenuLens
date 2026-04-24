@@ -6,10 +6,131 @@ import api from '../../utils/api';
 const TYPE_LABELS = { ai_sourced: '🤖 AI Sourced', user_feedback: '👤 User Feedback' };
 const FEEDBACK_LABELS = { wrong_nutrition: 'Wrong nutrition', wrong_dish_name: 'Wrong name', missing_allergen: 'Missing allergen', other: 'Other' };
 
+// ── Promote Modal ─────────────────────────────────────────────────────────────
+function PromoteModal({ item, onClose, onPromoted }) {
+  const n = item.ai_nutrition || {};
+  const [form, setForm] = useState({
+    canonical_name: item.dish_name?.toLowerCase().trim() || '',
+    display_name_en: item.dish_name || '',
+    category: '',
+    cooking_method: n.cooking_method || 'unknown',
+    calories_kcal: Math.round(((n.calories_min || 0) + (n.calories_max || 0)) / 2) || '',
+    protein_g: Math.round(((n.protein_min || 0) + (n.protein_max || 0)) / 2) || '',
+    carbs_g: Math.round(((n.carbs_min || 0) + (n.carbs_max || 0)) / 2) || '',
+    fat_g: Math.round(((n.fat_min || 0) + (n.fat_max || 0)) / 2) || '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.post(`/api/admin/queue/${item._id}/promote`, {
+        category: form.category || 'other',
+        cooking_method: form.cooking_method,
+        nutrition: {
+          portions: [{
+            label: 'Standard Restaurant Serving',
+            weight_grams: 250,
+            calories_kcal: Number(form.calories_kcal),
+            protein_g: Number(form.protein_g),
+            carbs_g: Number(form.carbs_g),
+            fat_g: Number(form.fat_g),
+            is_default: true,
+            tier: 'standard',
+            restaurant_multiplier_applied: 1.0,
+            multiplier_note: 'Admin verified from review queue',
+          }],
+        },
+        admin_notes: `Promoted via admin queue. Display name: ${form.display_name_en}`,
+      });
+      toast.success('Dish promoted to database!');
+      onPromoted(item._id);
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Promote failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const f = (field) => ({
+    value: form[field],
+    onChange: e => setForm(prev => ({ ...prev, [field]: e.target.value })),
+    className: 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400',
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={onClose}>
+      <div className="bg-white rounded-t-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-800">Promote to Database</h2>
+          <button onClick={onClose} className="text-gray-400 text-xl">×</button>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">Review and confirm nutrition data before adding to the food database.</p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Canonical Name (lowercase)</label>
+            <input {...f('canonical_name')} required />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Display Name</label>
+            <input {...f('display_name_en')} required />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Category</label>
+            <select {...f('category')} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400">
+              <option value="">Select category</option>
+              {['starter', 'main_course', 'bread', 'rice', 'dal', 'dessert', 'beverage', 'snack', 'salad', 'soup', 'other'].map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Cooking Method</label>
+            <select {...f('cooking_method')} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400">
+              {['grilled', 'fried', 'steamed', 'baked', 'raw', 'boiled', 'roasted', 'stir-fried', 'unknown'].map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs font-semibold text-gray-600 pt-1">Nutrition (per standard serving)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Calories (kcal)</label>
+              <input type="number" {...f('calories_kcal')} required />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Protein (g)</label>
+              <input type="number" step="0.1" {...f('protein_g')} required />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Carbs (g)</label>
+              <input type="number" step="0.1" {...f('carbs_g')} required />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Fat (g)</label>
+              <input type="number" step="0.1" {...f('fat_g')} required />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full py-3 bg-green-500 text-white rounded-xl font-semibold text-sm mt-2 disabled:opacity-60"
+          >
+            {saving ? 'Promoting...' : '✅ Add to Database'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function QueueItem({ item, onUpdate }) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(item.admin_notes || '');
   const [saving, setSaving] = useState(false);
+  const [showPromote, setShowPromote] = useState(false);
 
   const handleAction = async (status) => {
     setSaving(true);
@@ -110,14 +231,21 @@ function QueueItem({ item, onUpdate }) {
             >
               Mark Reviewed
             </button>
-            <Link
-              to={`/admin/queue/${item._id}/promote`}
-              className="flex-1 py-2 rounded-xl bg-green-500 text-white text-xs font-semibold text-center"
+            <button
+              onClick={() => setShowPromote(true)}
+              className="flex-1 py-2 rounded-xl bg-green-500 text-white text-xs font-semibold"
             >
               Promote →
-            </Link>
+            </button>
           </div>
         </div>
+      )}
+      {showPromote && (
+        <PromoteModal
+          item={item}
+          onClose={() => setShowPromote(false)}
+          onPromoted={(id) => onUpdate(id, 'promoted')}
+        />
       )}
     </div>
   );
