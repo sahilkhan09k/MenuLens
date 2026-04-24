@@ -15,13 +15,21 @@ const app = express();
 // CORS — allow credentials from the client origin
 app.use(cors({
   origin: (origin, callback) => {
+    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
     const allowed = [
-      process.env.CLIENT_URL || 'http://localhost:5173',
-      /^http:\/\/192\.168\.\d+\.\d+:5173$/,  // any LAN device
+      clientUrl,
+      clientUrl + '/',                             // trailing slash variant
+      'http://localhost:5173',
+      /^http:\/\/192\.168\.\d+\.\d+:5173$/,        // any LAN device
     ];
-    if (!origin) return callback(null, true); // server-to-server / curl
-    const ok = allowed.some(p => typeof p === 'string' ? p === origin : p.test(origin));
-    ok ? callback(null, true) : callback(new Error(`CORS blocked: ${origin}`));
+    if (!origin) return callback(null, true);       // server-to-server / curl
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const ok = allowed.some(p =>
+      typeof p === 'string'
+        ? p.replace(/\/$/, '') === normalizedOrigin
+        : p.test(origin)
+    );
+    ok ? callback(null, true) : callback(new Error('CORS blocked: ' + origin));
   },
   credentials: true,
 }));
