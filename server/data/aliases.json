@@ -1,0 +1,1307 @@
+{
+    "butter chicken":  {
+                           "en_variants":  [
+                                               "Butter Chicken",
+                                               "Murgh Makhani",
+                                               "Chicken Makhani",
+                                               "Makhani Chicken",
+                                               "Makhanwala Chicken",
+                                               "Murgh Makhanwala",
+                                               "Butter Masala Chicken",
+                                               "Chicken Makhani Masala"
+                                           ],
+                           "hi_devanagari":  [
+                                                 "??? ????",
+                                                 "????? ????",
+                                                 "???? ????"
+                                             ],
+                           "hi_roman":  [
+                                            "Murgh Makhani",
+                                            "Murgh Makhanee",
+                                            "Murg Makhani"
+                                        ],
+                           "ocr_corruptions":  [
+                                                   "Btr Chkn",
+                                                   "Bttr Chicken",
+                                                   "Butr Chiken",
+                                                   "B. Chicken",
+                                                   "Butter Chiken",
+                                                   "Butter Chikken",
+                                                   "Makhani Chkn",
+                                                   "Murgh Mkhni",
+                                                   "Bttr Chkn"
+                                               ],
+                           "abbreviations":  [
+                                                 "B. Chicken",
+                                                 "Bt. Chicken",
+                                                 "Makhani Ch."
+                                             ]
+                       },
+    "paneer butter masala":  {
+                                 "en_variants":  [
+                                                     "Paneer Butter Masala",
+                                                     "Paneer Makhani",
+                                                     "Butter Paneer",
+                                                     "Paneer in Butter Sauce",
+                                                     "Paneer Makhanwala",
+                                                     "Paneer Lababdar",
+                                                     "Makhani Paneer"
+                                                 ],
+                                 "hi_devanagari":  [
+                                                       "???? ??? ?????",
+                                                       "???? ????",
+                                                       "??? ????"
+                                                   ],
+                                 "hi_roman":  [
+                                                  "Paneer Makhani",
+                                                  "Paneer Makhanee",
+                                                  "Pnr Butter Masala"
+                                              ],
+                                 "ocr_corruptions":  [
+                                                         "Pnr Butter Masala",
+                                                         "Pneer Bttr Masala",
+                                                         "P. Butter Masala",
+                                                         "Panir Butter Masala",
+                                                         "Panier Makhani",
+                                                         "Pnr Mkhni",
+                                                         "Pnr Btr Msla"
+                                                     ],
+                                 "abbreviations":  [
+                                                       "PBM",
+                                                       "P.B.M.",
+                                                       "Pnr. Makhani",
+                                                       "Pan. Butter Msla"
+                                                   ]
+                             },
+    "dal makhani":  {
+                        "en_variants":  [
+                                            "Dal Makhani",
+                                            "Daal Makhani",
+                                            "Dal Makhni",
+                                            "Maa Ki Dal",
+                                            "Maa Di Dal",
+                                            "Kali Dal",
+                                            "Black Dal",
+                                            "Dal Bukhara",
+                                            "Maa Chole Ki Dal"
+                                        ],
+                        "hi_devanagari":  [
+                                              "??? ????",
+                                              "??? ?? ???",
+                                              "???? ???",
+                                              "??? ??????"
+                                          ],
+                        "hi_roman":  [
+                                         "Dal Makhani",
+                                         "Maa Ki Dal",
+                                         "Daal Makhanee",
+                                         "Kali Dal"
+                                     ],
+                        "ocr_corruptions":  [
+                                                "Dal Makhni",
+                                                "Daal Mkhni",
+                                                "D. Makhani",
+                                                "Dal Mkhni",
+                                                "Dl Mkhni"
+                                            ],
+                        "abbreviations":  [
+                                              "Dal Makhni",
+                                              "D. Makhani"
+                                          ]
+                    },
+    "chicken tikka masala":  {
+                                 "en_variants":  [
+                                                     "Chicken Tikka Masala",
+                                                     "CTM",
+                                                     "Murgh Tikka Masala",
+                                                     "Chicken Tikka Curry",
+                                                     "Tikka Masala Chicken"
+                                                 ],
+                                 "abbreviations":  [
+                                                       "CTM",
+                                                       "C.T.M.",
+                                                       "Chx. Tikka Msla"
+                                                   ],
+                                 "hi_devanagari":  [
+                                                       "???? ?????? ?????",
+                                                       "????? ?????? ?????"
+                                                   ],
+                                 "hi_roman":  [
+                                                  "Chicken Tikka Masala",
+                                                  "Murgh Tikka Masala"
+                                              ],
+                                 "ocr_corruptions":  [
+                                                         "Chkn Tkka Msla",
+                                                         "Chx Tikka Masala",
+                                                         "Chkn TM",
+                                                         "CTM",
+                                                         "Chiken Tikka Masala",
+                                                         "Chcken Tikka Msla"
+                                                     ]
+                             },
+    "shahi paneer":  {
+                         "en_variants":  [
+                                             "Shahi Paneer",
+                                             "Shahi Panner",
+                                             "Royal Paneer",
+                                             "Paneer Shahi",
+                                             "Mughlai Paneer"
+                                         ],
+                         "abbreviations":  [
+                                               "Shahi Pnr",
+                                               "S. Paneer"
+                                           ],
+                         "hi_devanagari":  [
+                                               "???? ????",
+                                               "????? ????"
+                                           ],
+                         "hi_roman":  [
+                                          "Shahi Paneer",
+                                          "Shaahi Paneer",
+                                          "Mughlai Paneer"
+                                      ],
+                         "ocr_corruptions":  [
+                                                 "Shhi Pnr",
+                                                 "Shahi Pneer",
+                                                 "Shahi Panir",
+                                                 "Shhi Paneer",
+                                                 "S. Paneer"
+                                             ]
+                     },
+    "palak paneer":  {
+                         "en_variants":  [
+                                             "Palak Paneer",
+                                             "Spinach Paneer",
+                                             "Saag Paneer",
+                                             "Palak Panner",
+                                             "Paneer Palak",
+                                             "Spinach Cottage Cheese"
+                                         ],
+                         "abbreviations":  [
+                                               "Palak Pnr",
+                                               "P. Paneer",
+                                               "Sag Paneer"
+                                           ],
+                         "hi_devanagari":  [
+                                               "???? ????",
+                                               "??? ????"
+                                           ],
+                         "hi_roman":  [
+                                          "Palak Paneer",
+                                          "Saag Paneer",
+                                          "Palak Paner"
+                                      ],
+                         "ocr_corruptions":  [
+                                                 "Plk Pnr",
+                                                 "Palak Pneer",
+                                                 "Palak Panir",
+                                                 "Plak Paneer",
+                                                 "P. Paneer"
+                                             ]
+                     },
+    "chicken biryani":  {
+                            "en_variants":  [
+                                                "Chicken Biryani",
+                                                "Murgh Biryani",
+                                                "Chicken Biriyani",
+                                                "Chicken Dum Biryani",
+                                                "Hyderabadi Chicken Biryani",
+                                                "Chicken Biriani",
+                                                "Murgh Biriyani"
+                                            ],
+                            "abbreviations":  [
+                                                  "Chx Biryani",
+                                                  "Ch. Biryani",
+                                                  "Murgh Bryn"
+                                              ],
+                            "hi_devanagari":  [
+                                                  "???? ???????",
+                                                  "????? ???????"
+                                              ],
+                            "hi_roman":  [
+                                             "Chicken Biryani",
+                                             "Murgh Biryani",
+                                             "Murgh Biriyani"
+                                         ],
+                            "ocr_corruptions":  [
+                                                    "Chkn Biryani",
+                                                    "Chx Biryani",
+                                                    "Chicken Bryani",
+                                                    "Chiken Biryani",
+                                                    "Chkn Bryn",
+                                                    "Murgh Bryn"
+                                                ]
+                        },
+    "mutton biryani":  {
+                           "en_variants":  [
+                                               "Mutton Biryani",
+                                               "Gosht Biryani",
+                                               "Lamb Biryani",
+                                               "Mutton Biriyani",
+                                               "Gosht Biriyani",
+                                               "Mutton Dum Biryani"
+                                           ],
+                           "abbreviations":  [
+                                                 "Mtn Biryani",
+                                                 "G. Biryani"
+                                             ],
+                           "hi_devanagari":  [
+                                                 "??? ???????",
+                                                 "????? ???????"
+                                             ],
+                           "hi_roman":  [
+                                            "Mutton Biryani",
+                                            "Gosht Biryani",
+                                            "Gosht Biriyani"
+                                        ],
+                           "ocr_corruptions":  [
+                                                   "Mttn Biryani",
+                                                   "Mutton Bryani",
+                                                   "Gosht Bryn",
+                                                   "Mtn Biryani"
+                                               ]
+                       },
+    "dal tadka":  {
+                      "en_variants":  [
+                                          "Dal Tadka",
+                                          "Daal Tadka",
+                                          "Dal Fry",
+                                          "Tadka Dal",
+                                          "Yellow Dal",
+                                          "Arhar Dal Tadka",
+                                          "Toor Dal Tadka"
+                                      ],
+                      "abbreviations":  [
+                                            "D. Tadka",
+                                            "Dal Tdk"
+                                        ],
+                      "hi_devanagari":  [
+                                            "??? ?????",
+                                            "????? ???",
+                                            "???? ???"
+                                        ],
+                      "hi_roman":  [
+                                       "Dal Tadka",
+                                       "Daal Tadka",
+                                       "Tadka Dal"
+                                   ],
+                      "ocr_corruptions":  [
+                                              "Dal Tdka",
+                                              "Daal Tdka",
+                                              "D. Tadka",
+                                              "Dal Tdk"
+                                          ]
+                  },
+    "naan":  {
+                 "en_variants":  [
+                                     "Naan",
+                                     "Nan",
+                                     "Naaan",
+                                     "Plain Naan",
+                                     "Tandoori Naan",
+                                     "Leavened Bread"
+                                 ],
+                 "abbreviations":  [
+                                       "Nan"
+                                   ],
+                 "hi_devanagari":  [
+                                       "???",
+                                       "?????? ???"
+                                   ],
+                 "hi_roman":  [
+                                  "Naan",
+                                  "Nan",
+                                  "Naaan"
+                              ],
+                 "ocr_corruptions":  [
+                                         "Nan",
+                                         "Naaan",
+                                         "Naan Bread",
+                                         "Naan Roti"
+                                     ]
+             },
+    "garlic naan":  {
+                        "en_variants":  [
+                                            "Garlic Naan",
+                                            "Lahsun Naan",
+                                            "Garlic Nan",
+                                            "Garlic Bread Naan",
+                                            "Garlic Butter Naan"
+                                        ],
+                        "abbreviations":  [
+                                              "G. Naan",
+                                              "Grlc Naan"
+                                          ],
+                        "hi_devanagari":  [
+                                              "????? ???",
+                                              "??????? ???"
+                                          ],
+                        "hi_roman":  [
+                                         "Lahsun Naan",
+                                         "Garlic Naan",
+                                         "Lahsun Nan"
+                                     ],
+                        "ocr_corruptions":  [
+                                                "Grlc Naan",
+                                                "Garlic Nan",
+                                                "Grlc Nan",
+                                                "Garlic Naan Bread"
+                                            ]
+                    },
+    "butter naan":  {
+                        "en_variants":  [
+                                            "Butter Naan",
+                                            "Makhan Naan",
+                                            "Butter Nan",
+                                            "Buttered Naan",
+                                            "Naan with Butter"
+                                        ],
+                        "abbreviations":  [
+                                              "B. Naan",
+                                              "Btr Naan"
+                                          ],
+                        "hi_devanagari":  [
+                                              "??? ???",
+                                              "????? ???"
+                                          ],
+                        "hi_roman":  [
+                                         "Butter Naan",
+                                         "Makhan Naan",
+                                         "Makhan Nan"
+                                     ],
+                        "ocr_corruptions":  [
+                                                "Btr Naan",
+                                                "Bttr Naan",
+                                                "Butter Nan",
+                                                "Btr Nan"
+                                            ]
+                    },
+    "chapati":  {
+                    "en_variants":  [
+                                        "Chapati",
+                                        "Chapatti",
+                                        "Chapathi",
+                                        "Chappati",
+                                        "Roti",
+                                        "Phulka",
+                                        "Wheat Roti",
+                                        "Atta Roti"
+                                    ],
+                    "abbreviations":  [
+                                          "Chpti",
+                                          "Roti"
+                                      ],
+                    "hi_devanagari":  [
+                                          "?????",
+                                          "????",
+                                          "?????"
+                                      ],
+                    "hi_roman":  [
+                                     "Chapati",
+                                     "Chapatti",
+                                     "Roti",
+                                     "Phulka"
+                                 ],
+                    "ocr_corruptions":  [
+                                            "Chpti",
+                                            "Chapti",
+                                            "Chpati",
+                                            "Chapatti",
+                                            "Chpatti"
+                                        ]
+                },
+    "paratha":  {
+                    "en_variants":  [
+                                        "Paratha",
+                                        "Parantha",
+                                        "Parata",
+                                        "Parantha",
+                                        "Stuffed Paratha",
+                                        "Plain Paratha",
+                                        "Laccha Paratha"
+                                    ],
+                    "abbreviations":  [
+                                          "Prtha",
+                                          "Prntha"
+                                      ],
+                    "hi_devanagari":  [
+                                          "?????",
+                                          "??????"
+                                      ],
+                    "hi_roman":  [
+                                     "Paratha",
+                                     "Parantha",
+                                     "Parata"
+                                 ],
+                    "ocr_corruptions":  [
+                                            "Prtha",
+                                            "Partha",
+                                            "Prntha",
+                                            "Pratha",
+                                            "Partha"
+                                        ]
+                },
+    "masala dosa":  {
+                        "en_variants":  [
+                                            "Masala Dosa",
+                                            "Masala Dose",
+                                            "Masala Dosai",
+                                            "Potato Masala Dosa",
+                                            "Aloo Masala Dosa"
+                                        ],
+                        "abbreviations":  [
+                                              "M. Dosa",
+                                              "Msla Dosa"
+                                          ],
+                        "hi_devanagari":  [
+                                              "????? ????",
+                                              "????? ????"
+                                          ],
+                        "hi_roman":  [
+                                         "Masala Dosa",
+                                         "Masala Dose",
+                                         "Masala Dosai"
+                                     ],
+                        "ocr_corruptions":  [
+                                                "Msla Dosa",
+                                                "Masala Dsa",
+                                                "Msla Dsa",
+                                                "Masla Dosa"
+                                            ]
+                    },
+    "idli":  {
+                 "en_variants":  [
+                                     "Idli",
+                                     "Idly",
+                                     "Idlies",
+                                     "Steamed Rice Cake",
+                                     "Rice Idli",
+                                     "Plain Idli"
+                                 ],
+                 "abbreviations":  [
+                                       "Idli"
+                                   ],
+                 "hi_devanagari":  [
+                                       "????",
+                                       "????"
+                                   ],
+                 "hi_roman":  [
+                                  "Idli",
+                                  "Idly",
+                                  "Idlies"
+                              ],
+                 "ocr_corruptions":  [
+                                         "ldli",
+                                         "ldly",
+                                         "Idl1",
+                                         "Id1i"
+                                     ]
+             },
+    "samosa":  {
+                   "en_variants":  [
+                                       "Samosa",
+                                       "Samosas",
+                                       "Aloo Samosa",
+                                       "Potato Samosa",
+                                       "Veg Samosa",
+                                       "Samosa Chaat"
+                                   ],
+                   "abbreviations":  [
+                                         "Smsa",
+                                         "Samos"
+                                     ],
+                   "hi_devanagari":  [
+                                         "?????",
+                                         "??? ?????"
+                                     ],
+                   "hi_roman":  [
+                                    "Samosa",
+                                    "Aloo Samosa",
+                                    "Veg Samosa"
+                                ],
+                   "ocr_corruptions":  [
+                                           "Smsa",
+                                           "Samsa",
+                                           "Samos",
+                                           "Smosa",
+                                           "Samsa"
+                                       ]
+               },
+    "chole bhature":  {
+                          "en_variants":  [
+                                              "Chole Bhature",
+                                              "Chhole Bhature",
+                                              "Chole Bhatura",
+                                              "Chana Bhatura",
+                                              "Chole Puri",
+                                              "Chhole Bhatura"
+                                          ],
+                          "abbreviations":  [
+                                                "C. Bhature",
+                                                "Chole Bhtre"
+                                            ],
+                          "hi_devanagari":  [
+                                                "???? ?????",
+                                                "???? ?????",
+                                                "???? ?????"
+                                            ],
+                          "hi_roman":  [
+                                           "Chole Bhature",
+                                           "Chhole Bhature",
+                                           "Chole Bhatura"
+                                       ],
+                          "ocr_corruptions":  [
+                                                  "Chole Bhtre",
+                                                  "Chle Bhtre",
+                                                  "Chole Bhatre",
+                                                  "Chle Bhature"
+                                              ]
+                      },
+    "pav bhaji":  {
+                      "en_variants":  [
+                                          "Pav Bhaji",
+                                          "Pao Bhaji",
+                                          "Pav Bhaji Masala",
+                                          "Mumbai Pav Bhaji",
+                                          "Bhaji Pav"
+                                      ],
+                      "abbreviations":  [
+                                            "P. Bhaji",
+                                            "Pv Bhji"
+                                        ],
+                      "hi_devanagari":  [
+                                            "??? ????",
+                                            "??? ???? ?????"
+                                        ],
+                      "hi_roman":  [
+                                       "Pav Bhaji",
+                                       "Pao Bhaji",
+                                       "Pav Bhaji Masala"
+                                   ],
+                      "ocr_corruptions":  [
+                                              "Pv Bhji",
+                                              "Pav Bhji",
+                                              "Pao Bhji",
+                                              "Pv Bhaji"
+                                          ]
+                  },
+    "vada pav":  {
+                     "en_variants":  [
+                                         "Vada Pav",
+                                         "Wada Pav",
+                                         "Batata Vada Pav",
+                                         "Vada Pao",
+                                         "Mumbai Burger",
+                                         "Batata Wada Pav"
+                                     ],
+                     "abbreviations":  [
+                                           "V. Pav",
+                                           "Vda Pav"
+                                       ],
+                     "hi_devanagari":  [
+                                           "???? ???",
+                                           "????? ???? ???"
+                                       ],
+                     "hi_roman":  [
+                                      "Vada Pav",
+                                      "Wada Pav",
+                                      "Batata Vada Pav"
+                                  ],
+                     "ocr_corruptions":  [
+                                             "Vda Pav",
+                                             "Wda Pav",
+                                             "Vada Pv",
+                                             "Vda Pv"
+                                         ]
+                 },
+    "chicken tikka":  {
+                          "en_variants":  [
+                                              "Chicken Tikka",
+                                              "Murgh Tikka",
+                                              "Chicken Tikka Starter",
+                                              "Grilled Chicken Tikka",
+                                              "Tandoori Chicken Tikka"
+                                          ],
+                          "abbreviations":  [
+                                                "Chx Tikka",
+                                                "C. Tikka",
+                                                "Murgh Tkka"
+                                            ],
+                          "hi_devanagari":  [
+                                                "???? ??????",
+                                                "????? ??????"
+                                            ],
+                          "hi_roman":  [
+                                           "Chicken Tikka",
+                                           "Murgh Tikka",
+                                           "Murgh Tikka Starter"
+                                       ],
+                          "ocr_corruptions":  [
+                                                  "Chkn Tikka",
+                                                  "Chx Tikka",
+                                                  "Chiken Tikka",
+                                                  "Chkn Tkka",
+                                                  "Murgh Tkka"
+                                              ]
+                      },
+    "tandoori chicken":  {
+                             "en_variants":  [
+                                                 "Tandoori Chicken",
+                                                 "Tandoor Chicken",
+                                                 "Murgh Tandoori",
+                                                 "Tandoori Murgh",
+                                                 "Half Tandoori Chicken",
+                                                 "Quarter Tandoori Chicken"
+                                             ],
+                             "abbreviations":  [
+                                                   "T. Chicken",
+                                                   "Tndri Chkn"
+                                               ],
+                             "hi_devanagari":  [
+                                                   "?????? ????",
+                                                   "????? ??????"
+                                               ],
+                             "hi_roman":  [
+                                              "Tandoori Chicken",
+                                              "Murgh Tandoori",
+                                              "Tandoori Murgh"
+                                          ],
+                             "ocr_corruptions":  [
+                                                     "Tndri Chkn",
+                                                     "Tandori Chicken",
+                                                     "Tndoori Chkn",
+                                                     "Tandoori Chiken"
+                                                 ]
+                         },
+    "chicken kadhai":  {
+                           "en_variants":  [
+                                               "Chicken Kadhai",
+                                               "Kadai Chicken",
+                                               "Karahi Chicken",
+                                               "Chicken Karahi",
+                                               "Kadhai Murgh",
+                                               "Chicken Kadai"
+                                           ],
+                           "abbreviations":  [
+                                                 "Kadai Ch.",
+                                                 "Karahi Ch."
+                                             ],
+                           "hi_devanagari":  [
+                                                 "???? ??????",
+                                                 "?????? ????",
+                                                 "????? ??????"
+                                             ],
+                           "hi_roman":  [
+                                            "Chicken Kadhai",
+                                            "Kadai Chicken",
+                                            "Karahi Chicken"
+                                        ],
+                           "ocr_corruptions":  [
+                                                   "Chkn Kadhai",
+                                                   "Chx Kadhai",
+                                                   "Kadai Chkn",
+                                                   "Karahi Chkn"
+                                               ]
+                       },
+    "chicken curry":  {
+                          "en_variants":  [
+                                              "Chicken Curry",
+                                              "Murgh Curry",
+                                              "Chicken Gravy",
+                                              "Chicken Masala",
+                                              "Murgh Masala",
+                                              "Chicken Salan"
+                                          ],
+                          "abbreviations":  [
+                                                "Chx Curry",
+                                                "Ch. Curry"
+                                            ],
+                          "hi_devanagari":  [
+                                                "???? ???",
+                                                "????? ???",
+                                                "???? ?????"
+                                            ],
+                          "hi_roman":  [
+                                           "Chicken Curry",
+                                           "Murgh Curry",
+                                           "Chicken Masala"
+                                       ],
+                          "ocr_corruptions":  [
+                                                  "Chkn Curry",
+                                                  "Chx Curry",
+                                                  "Chicken Crry",
+                                                  "Chkn Crry"
+                                              ]
+                      },
+    "paneer tikka masala":  {
+                                "en_variants":  [
+                                                    "Paneer Tikka Masala",
+                                                    "Paneer Tikka Curry",
+                                                    "Tikka Masala Paneer",
+                                                    "Paneer in Tikka Sauce"
+                                                ],
+                                "abbreviations":  [
+                                                      "PTM",
+                                                      "P.T.M.",
+                                                      "Pnr. Tikka Msla"
+                                                  ],
+                                "hi_devanagari":  [
+                                                      "???? ?????? ?????",
+                                                      "???? ?????? ???"
+                                                  ],
+                                "hi_roman":  [
+                                                 "Paneer Tikka Masala",
+                                                 "Pnr Tikka Masala"
+                                             ],
+                                "ocr_corruptions":  [
+                                                        "Pnr Tikka Msla",
+                                                        "Panir Tikka Masala",
+                                                        "Pneer Tkka Msla",
+                                                        "Pnr TM"
+                                                    ]
+                            },
+    "kadhai paneer":  {
+                          "en_variants":  [
+                                              "Kadhai Paneer",
+                                              "Kadai Paneer",
+                                              "Karahi Paneer",
+                                              "Paneer Kadhai",
+                                              "Paneer Kadai"
+                                          ],
+                          "abbreviations":  [
+                                                "Kadai Pnr",
+                                                "K. Paneer"
+                                            ],
+                          "hi_devanagari":  [
+                                                "?????? ????",
+                                                "???? ??????"
+                                            ],
+                          "hi_roman":  [
+                                           "Kadhai Paneer",
+                                           "Kadai Paneer",
+                                           "Karahi Paneer"
+                                       ],
+                          "ocr_corruptions":  [
+                                                  "Kdhi Pnr",
+                                                  "Kadai Pneer",
+                                                  "Kadhai Panir",
+                                                  "Kdhai Pnr"
+                                              ]
+                      },
+    "veg biryani":  {
+                        "en_variants":  [
+                                            "Veg Biryani",
+                                            "Vegetable Biryani",
+                                            "Veg Biriyani",
+                                            "Vegetable Biriyani",
+                                            "Veg Dum Biryani",
+                                            "Mixed Veg Biryani"
+                                        ],
+                        "abbreviations":  [
+                                              "V. Biryani",
+                                              "Veg Bryn"
+                                          ],
+                        "hi_devanagari":  [
+                                              "??? ???????",
+                                              "????? ???????"
+                                          ],
+                        "hi_roman":  [
+                                         "Veg Biryani",
+                                         "Sabzi Biryani",
+                                         "Veg Biriyani"
+                                     ],
+                        "ocr_corruptions":  [
+                                                "Veg Bryani",
+                                                "Vg Biryani",
+                                                "Veg Bryn",
+                                                "Vg Bryn"
+                                            ]
+                    },
+    "jeera rice":  {
+                       "en_variants":  [
+                                           "Jeera Rice",
+                                           "Zeera Rice",
+                                           "Cumin Rice",
+                                           "Jeera Pulao",
+                                           "Zeera Pulao",
+                                           "Cumin Pulao"
+                                       ],
+                       "abbreviations":  [
+                                             "J. Rice",
+                                             "Jra Rice"
+                                         ],
+                       "hi_devanagari":  [
+                                             "???? ????",
+                                             "???? ?????",
+                                             "????? ????"
+                                         ],
+                       "hi_roman":  [
+                                        "Jeera Rice",
+                                        "Zeera Rice",
+                                        "Jeera Pulao"
+                                    ],
+                       "ocr_corruptions":  [
+                                               "Jra Rice",
+                                               "Jera Rice",
+                                               "Zeera Rce",
+                                               "Jira Rice"
+                                           ]
+                   },
+    "hakka noodles":  {
+                          "en_variants":  [
+                                              "Hakka Noodles",
+                                              "Veg Hakka Noodles",
+                                              "Chinese Noodles",
+                                              "Hakka Noodle",
+                                              "Stir Fried Noodles"
+                                          ],
+                          "abbreviations":  [
+                                                "H. Noodles",
+                                                "Hkka Ndls"
+                                            ],
+                          "hi_devanagari":  [
+                                                "????? ??????",
+                                                "?????? ??????"
+                                            ],
+                          "hi_roman":  [
+                                           "Hakka Noodles",
+                                           "Veg Hakka Noodles",
+                                           "Chinese Noodles"
+                                       ],
+                          "ocr_corruptions":  [
+                                                  "Hkka Ndles",
+                                                  "Hakka Ndls",
+                                                  "Hkka Noodles",
+                                                  "Hakka Noodls"
+                                              ]
+                      },
+    "chicken fried rice":  {
+                               "en_variants":  [
+                                                   "Chicken Fried Rice",
+                                                   "Murgh Fried Rice",
+                                                   "Chicken Chinese Rice",
+                                                   "Fried Rice Chicken"
+                                               ],
+                               "abbreviations":  [
+                                                     "CFR",
+                                                     "Chx FR",
+                                                     "Chkn FR"
+                                                 ],
+                               "hi_devanagari":  [
+                                                     "???? ?????? ????",
+                                                     "????? ?????? ????"
+                                                 ],
+                               "hi_roman":  [
+                                                "Chicken Fried Rice",
+                                                "Murgh Fried Rice"
+                                            ],
+                               "ocr_corruptions":  [
+                                                       "Chkn Fried Rice",
+                                                       "Chx Fried Rice",
+                                                       "Chkn Frd Rce",
+                                                       "Chicken Frd Rice"
+                                                   ]
+                           },
+    "veg fried rice":  {
+                           "en_variants":  [
+                                               "Veg Fried Rice",
+                                               "Vegetable Fried Rice",
+                                               "Chinese Fried Rice",
+                                               "Veg Chinese Rice"
+                                           ],
+                           "abbreviations":  [
+                                                 "VFR",
+                                                 "Veg FR"
+                                             ],
+                           "hi_devanagari":  [
+                                                 "??? ?????? ????",
+                                                 "????? ?????? ????"
+                                             ],
+                           "hi_roman":  [
+                                            "Veg Fried Rice",
+                                            "Vegetable Fried Rice"
+                                        ],
+                           "ocr_corruptions":  [
+                                                   "Veg Frd Rice",
+                                                   "Vg Fried Rice",
+                                                   "Veg Frd Rce",
+                                                   "Vg FR"
+                                               ]
+                       },
+    "chilli paneer":  {
+                          "en_variants":  [
+                                              "Chilli Paneer",
+                                              "Chili Paneer",
+                                              "Chilli Panner",
+                                              "Paneer Chilli",
+                                              "Dry Chilli Paneer",
+                                              "Chilli Paneer Dry",
+                                              "Chilli Paneer Gravy"
+                                          ],
+                          "abbreviations":  [
+                                                "C. Paneer",
+                                                "Chli Pnr"
+                                            ],
+                          "hi_devanagari":  [
+                                                "???? ????",
+                                                "?????? ????"
+                                            ],
+                          "hi_roman":  [
+                                           "Chilli Paneer",
+                                           "Chili Paneer",
+                                           "Paneer Chilli"
+                                       ],
+                          "ocr_corruptions":  [
+                                                  "Chli Pnr",
+                                                  "Chilli Pneer",
+                                                  "Chili Panir",
+                                                  "Ch!lli Pneer",
+                                                  "Chlli Pnr"
+                                              ]
+                      },
+    "chicken manchurian":  {
+                               "en_variants":  [
+                                                   "Chicken Manchurian",
+                                                   "Chicken Manchurian Dry",
+                                                   "Chicken Manchurian Gravy",
+                                                   "Manchurian Chicken"
+                                               ],
+                               "abbreviations":  [
+                                                     "Chx Manchurian",
+                                                     "Ch. Manchurian"
+                                                 ],
+                               "hi_devanagari":  [
+                                                     "???? ????????",
+                                                     "???????? ????"
+                                                 ],
+                               "hi_roman":  [
+                                                "Chicken Manchurian",
+                                                "Manchurian Chicken"
+                                            ],
+                               "ocr_corruptions":  [
+                                                       "Chkn Manchurian",
+                                                       "Chx Manchurian",
+                                                       "Chkn Mnchrian",
+                                                       "Chicken Mnchrian"
+                                                   ]
+                           },
+    "veg manchurian":  {
+                           "en_variants":  [
+                                               "Veg Manchurian",
+                                               "Vegetable Manchurian",
+                                               "Veg Manchurian Dry",
+                                               "Veg Manchurian Gravy",
+                                               "Manchurian Veg"
+                                           ],
+                           "abbreviations":  [
+                                                 "V. Manchurian",
+                                                 "Veg Mnchrian"
+                                             ],
+                           "hi_devanagari":  [
+                                                 "??? ????????",
+                                                 "????? ????????"
+                                             ],
+                           "hi_roman":  [
+                                            "Veg Manchurian",
+                                            "Vegetable Manchurian"
+                                        ],
+                           "ocr_corruptions":  [
+                                                   "Veg Mnchrian",
+                                                   "Vg Manchurian",
+                                                   "Veg Mnchrian",
+                                                   "Vg Mnchrian"
+                                               ]
+                       },
+    "chicken 65":  {
+                       "en_variants":  [
+                                           "Chicken 65",
+                                           "Chicken Sixty Five",
+                                           "Chkn 65",
+                                           "Spicy Fried Chicken 65"
+                                       ],
+                       "abbreviations":  [
+                                             "Ch. 65",
+                                             "Chkn 65"
+                                         ],
+                       "hi_devanagari":  [
+                                             "???? 65",
+                                             "???? ?????"
+                                         ],
+                       "hi_roman":  [
+                                        "Chicken 65",
+                                        "Chicken Sixty Five"
+                                    ],
+                       "ocr_corruptions":  [
+                                               "Chkn 65",
+                                               "Chx 65",
+                                               "Chicken 6S",
+                                               "Chiken 65",
+                                               "Chkn65"
+                                           ]
+                   },
+    "gobi 65":  {
+                    "en_variants":  [
+                                        "Gobi 65",
+                                        "Cauliflower 65",
+                                        "Gobhi 65",
+                                        "Gobi Fry 65",
+                                        "Crispy Gobi 65"
+                                    ],
+                    "abbreviations":  [
+                                          "G. 65",
+                                          "Gbi 65"
+                                      ],
+                    "hi_devanagari":  [
+                                          "???? 65",
+                                          "??????? 65"
+                                      ],
+                    "hi_roman":  [
+                                     "Gobi 65",
+                                     "Gobhi 65",
+                                     "Cauliflower 65"
+                                 ],
+                    "ocr_corruptions":  [
+                                            "Gbi 65",
+                                            "Gobi6S",
+                                            "Gobhi65",
+                                            "Gbi65"
+                                        ]
+                },
+    "momos":  {
+                  "en_variants":  [
+                                      "Momos",
+                                      "Momo",
+                                      "Dumplings",
+                                      "Steamed Momos",
+                                      "Fried Momos",
+                                      "Veg Momos",
+                                      "Chicken Momos",
+                                      "Tibetan Dumplings"
+                                  ],
+                  "abbreviations":  [
+                                        "Mmo",
+                                        "Mmos"
+                                    ],
+                  "hi_devanagari":  [
+                                        "????",
+                                        "?????",
+                                        "??????? ????????"
+                                    ],
+                  "hi_roman":  [
+                                   "Momos",
+                                   "Momo",
+                                   "Tibetan Momos"
+                               ],
+                  "ocr_corruptions":  [
+                                          "Mmos",
+                                          "Mmo",
+                                          "Mmos",
+                                          "Mmoz",
+                                          "M0mos"
+                                      ]
+              },
+    "spring roll":  {
+                        "en_variants":  [
+                                            "Spring Roll",
+                                            "Spring Rolls",
+                                            "Veg Spring Roll",
+                                            "Chicken Spring Roll",
+                                            "Crispy Spring Roll"
+                                        ],
+                        "abbreviations":  [
+                                              "S. Roll",
+                                              "Sprng Roll"
+                                          ],
+                        "hi_devanagari":  [
+                                              "???????? ???",
+                                              "??? ???????? ???"
+                                          ],
+                        "hi_roman":  [
+                                         "Spring Roll",
+                                         "Veg Spring Roll"
+                                     ],
+                        "ocr_corruptions":  [
+                                                "Sprng Roll",
+                                                "Spng Roll",
+                                                "Sprng Rl",
+                                                "Spring Rl"
+                                            ]
+                    },
+    "lassi":  {
+                  "en_variants":  [
+                                      "Lassi",
+                                      "Sweet Lassi",
+                                      "Meethi Lassi",
+                                      "Salted Lassi",
+                                      "Namkeen Lassi",
+                                      "Mango Lassi",
+                                      "Plain Lassi"
+                                  ],
+                  "abbreviations":  [
+                                        "Lssi"
+                                    ],
+                  "hi_devanagari":  [
+                                        "?????",
+                                        "???? ?????",
+                                        "????? ?????"
+                                    ],
+                  "hi_roman":  [
+                                   "Lassi",
+                                   "Meethi Lassi",
+                                   "Namkeen Lassi"
+                               ],
+                  "ocr_corruptions":  [
+                                          "Lssi",
+                                          "Lassi",
+                                          "Lasi",
+                                          "Lssi"
+                                      ]
+              },
+    "chai":  {
+                 "en_variants":  [
+                                     "Chai",
+                                     "Masala Chai",
+                                     "Garam Chai",
+                                     "Indian Tea",
+                                     "Masala Tea",
+                                     "Cutting Chai",
+                                     "Adrak Chai"
+                                 ],
+                 "abbreviations":  [
+                                       "Chai",
+                                       "M. Chai"
+                                   ],
+                 "hi_devanagari":  [
+                                       "???",
+                                       "????? ???",
+                                       "??? ???",
+                                       "???? ???"
+                                   ],
+                 "hi_roman":  [
+                                  "Chai",
+                                  "Masala Chai",
+                                  "Garam Chai",
+                                  "Adrak Chai"
+                              ],
+                 "ocr_corruptions":  [
+                                         "Cha1",
+                                         "Cha!",
+                                         "Chai Tea",
+                                         "Masla Chai"
+                                     ]
+             },
+    "gulab jamun":  {
+                        "en_variants":  [
+                                            "Gulab Jamun",
+                                            "Gulab Jamoon",
+                                            "Gulab Jaman",
+                                            "Gulab Jamun with Ice Cream",
+                                            "Fried Milk Balls"
+                                        ],
+                        "abbreviations":  [
+                                              "G. Jamun",
+                                              "Glb Jmn"
+                                          ],
+                        "hi_devanagari":  [
+                                              "????? ?????",
+                                              "????? ?????"
+                                          ],
+                        "hi_roman":  [
+                                         "Gulab Jamun",
+                                         "Gulab Jamoon",
+                                         "Gulab Jaman"
+                                     ],
+                        "ocr_corruptions":  [
+                                                "Glb Jmn",
+                                                "Gulab Jmn",
+                                                "Glb Jamun",
+                                                "Gulab Jmun"
+                                            ]
+                    },
+    "raita":  {
+                  "en_variants":  [
+                                      "Raita",
+                                      "Boondi Raita",
+                                      "Cucumber Raita",
+                                      "Onion Raita",
+                                      "Mixed Raita",
+                                      "Veg Raita",
+                                      "Dahi Raita"
+                                  ],
+                  "abbreviations":  [
+                                        "Rta",
+                                        "Boondi Rta"
+                                    ],
+                  "hi_devanagari":  [
+                                        "?????",
+                                        "????? ?????",
+                                        "???? ?? ?????"
+                                    ],
+                  "hi_roman":  [
+                                   "Raita",
+                                   "Boondi Raita",
+                                   "Kheere Ka Raita"
+                               ],
+                  "ocr_corruptions":  [
+                                          "Rta",
+                                          "Raita",
+                                          "Rata",
+                                          "Ryta"
+                                      ]
+              },
+    "paneer tikka":  {
+                         "en_variants":  [
+                                             "Paneer Tikka",
+                                             "Paneer Tikka Starter",
+                                             "Grilled Paneer Tikka",
+                                             "Tandoori Paneer Tikka",
+                                             "Paneer Shaslik"
+                                         ],
+                         "abbreviations":  [
+                                               "P. Tikka",
+                                               "Pnr Tikka"
+                                           ],
+                         "hi_devanagari":  [
+                                               "???? ??????",
+                                               "?????? ???? ??????"
+                                           ],
+                         "hi_roman":  [
+                                          "Paneer Tikka",
+                                          "Tandoori Paneer Tikka",
+                                          "Paneer Shaslik"
+                                      ],
+                         "ocr_corruptions":  [
+                                                 "Pnr Tikka",
+                                                 "Panir Tikka",
+                                                 "Pneer Tkka",
+                                                 "Pnr Tkka"
+                                             ]
+                     },
+    "malai tikka":  {
+                        "en_variants":  [
+                                            "Malai Tikka",
+                                            "Malai Chicken Tikka",
+                                            "Cream Tikka",
+                                            "Murgh Malai Tikka",
+                                            "White Tikka"
+                                        ],
+                        "abbreviations":  [
+                                              "M. Tikka",
+                                              "Mlai Tikka"
+                                          ],
+                        "hi_devanagari":  [
+                                              "???? ??????",
+                                              "????? ???? ??????"
+                                          ],
+                        "hi_roman":  [
+                                         "Malai Tikka",
+                                         "Murgh Malai Tikka",
+                                         "Malai Chicken Tikka"
+                                     ],
+                        "ocr_corruptions":  [
+                                                "Mlai Tikka",
+                                                "Malai Tkka",
+                                                "Mlai Tkka"
+                                            ]
+                    }
+}

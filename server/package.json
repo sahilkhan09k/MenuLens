@@ -1,0 +1,38 @@
+{
+  "name": "menulens-server",
+  "version": "1.0.0",
+  "description": "MenuLens Express backend",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "node --test tests/properties.test.js tests/auth.test.js",
+    "test:auth": "node --test tests/auth.test.js",
+    "seed": "node scripts/seedFoodDB.mjs",
+    "seed:missing": "node scripts/seedMissingDishes.mjs",
+    "seed:indo": "node scripts/seedIndoChinese.mjs",
+    "seed:street": "node scripts/seedStreetFood.mjs",
+    "seed:all": "node scripts/seedFoodDB.mjs && node scripts/seedMissingDishes.mjs && node scripts/seedIndoChinese.mjs && node scripts/seedStreetFood.mjs",
+    "generate:hindi": "node scripts/generateHindiAliases.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^1.41.0",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.0",
+    "express-rate-limit": "^7.1.0",
+    "groq-sdk": "^0.3.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^8.0.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "fast-check": "^4.6.0",
+    "nodemon": "^3.0.0"
+  }
+}
