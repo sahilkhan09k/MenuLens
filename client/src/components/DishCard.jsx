@@ -11,9 +11,11 @@ export default function DishCard({ dish, onSaveToggle }) {
   const [isSaved, setIsSaved] = useState(dish.isSaved || false);
   const [saving, setSaving] = useState(false);
 
-  const scoreColor = dish.matchScore >= 60
+  const scoreColor = dish.matchScore >= 65
     ? 'bg-green-100 text-green-700'
-    : dish.matchScore <= 30
+    : dish.matchScore >= 45
+    ? 'bg-green-50 text-green-600'
+    : dish.matchScore <= 25
     ? 'bg-red-100 text-red-700'
     : 'bg-yellow-100 text-yellow-700';
 
@@ -47,7 +49,9 @@ export default function DishCard({ dish, onSaveToggle }) {
       <div className="flex items-start justify-between mb-2 pr-8">
         <h3 className="font-semibold text-gray-800 flex-1">{dish.name}</h3>
         <div className="flex items-center gap-1">
-          {dish.allergenFlags?.length > 0 && <span title="Contains allergens">⚠️</span>}
+          {/* Only show warning if dish has allergens AND user is actually allergic — 
+              allergenFlags on card are informational only, not a hard block unless user declared them */}
+          {dish.matchScore === 0 && <span title="Contains your allergens">⚠️</span>}
           <span className={`text-xs font-bold px-2 py-1 rounded-full ${scoreColor}`}>{dish.matchScore}</span>
         </div>
       </div>

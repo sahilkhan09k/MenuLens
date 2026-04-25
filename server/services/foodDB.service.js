@@ -5,91 +5,41 @@ function escapeRegex(str) {
 }
 
 /**
- * Lookup a food item from the DB using multiple strategies:
- * 1. Exact canonical match
- * 2. Alias match
- * 3. MongoDB $text search
- * 4. Fuzzy: word-level match against canonical_name
+ * Lookup a food item from the DB using exact matching only:
+ * 1. Exact canonical name match (lowercase)
+ * 2. Case-insensitive exact alias match
+ *
+ * No fuzzy/text search — false positives cause worse nutrition data than AI fallback.
+ * The LLM extraction step normalizes dish names to canonical forms, so exact matching
+ * is sufficient for the vast majority of cases.
  */
 export async function lookupFoodItem(dishName) {
   if (!dishName) return null;
   const normalized = dishName.toLowerCase().trim();
-  const isDevanagari = /[\u0900-\u097F]/.test(dishName);
 
-  // 1. Exact canonical match (Latin only)
-  if (!isDevanagari) {
-    const item = await FoodItem.findOne({ canonical_name: normalized });
-    if (item) return item;
-  }
+  // 1. Exact canonical name match
+  const exact = await FoodItem.findOne({ canonical_name: normalized });
+  if (exact) return exact;
 
-  // 2. Alias match — handles Devanagari, OCR variants, abbreviations
-  const aliasItem = await FoodItem.findOne({
-    'aliases.alias_text': isDevanagari
-      ? dishName
-      : { $regex: new RegExp(`^${escapeRegex(normalized)}$`, 'i') },
+  // 2. Case-insensitive exact alias match
+  const aliasMatch = await FoodItem.findOne({
+    'aliases.alias_text': { $regex: new RegExp('^' + escapeRegex(normalized) + '$', 'i') },
   });
-  if (aliasItem) return aliasItem;
+  if (aliasMatch) return aliasMatch;
 
-  // 3. Text search (uses $text index on display_name_en + aliases.alias_text)
-  // Only accept if the result name shares the majority of words with the query
-  if (!isDevanagari) {
-    const textResults = await FoodItem.find(
-      { $text: { $search: normalized } },
-      { score: { $meta: 'textScore' } }
-    ).sort({ score: { $meta: 'textScore' } }).limit(3);
-
-    if (textResults.length > 0) {
-      const queryWords = normalized.split(/\s+/).filter(w => w.length > 2);
-      for (const result of textResults) {
-        const resultWords = new Set(result.canonical_name.split(/\s+/).filter(w => w.length > 2));
-        const overlap = queryWords.filter(w => resultWords.has(w)).length;
-        const overlapRatio = queryWords.length > 0 ? overlap / queryWords.length : 0;
-        // Require at least 60% overlap AND at least 2 words must match
-        // This prevents "Chilli Prawn" matching "onion-green chilli parantha" via just "chilli"
-        if (overlapRatio >= 0.6 && overlap >= 2) return result;
-      }
-    }
-  }
-
-  // 4. Fuzzy: require at least 2 significant words to match, or a highly specific single word
-  // Avoids false positives like "Majestic Chicken" matching "Chicken Tikka" via "chicken"
-  if (!isDevanagari) {
-    const words = normalized.split(/\s+/).filter((w) => w.length > 4); // >4 chars = more specific
-    // Only do single-word fuzzy if the word is very specific (not generic like "chicken", "paneer", "rice")
-    const genericWords = new Set(['chicken', 'paneer', 'mutton', 'prawn', 'mushroom', 'fried', 'rice',
-      'noodles', 'soup', 'curry', 'masala', 'gravy', 'roast', 'kebab', 'tikka', 'biryani']);
-    const specificWords = words.filter(w => !genericWords.has(w));
-
-    if (specificWords.length >= 2) {
-      // Need at least 2 specific words to match — reduces false positives
-      const regexParts = specificWords.map(w => `(?=.*${escapeRegex(w)})`).join('');
-      const fuzzy = await FoodItem.findOne({
-        canonical_name: { $regex: new RegExp(regexParts, 'i') },
-      });
-      if (fuzzy) return fuzzy;
-    } else if (specificWords.length === 1) {
-      // Single specific non-generic word — only match if it's a strong identifier
-      const fuzzy = await FoodItem.findOne({
-        canonical_name: { $regex: new RegExp(`\\b${escapeRegex(specificWords[0])}\\b`, 'i') },
-      });
-      if (fuzzy) return fuzzy;
-    }
-  }
-
+  // No match — caller will use AI estimation
   return null;
 }
 
 /**
  * Get all restaurant portion tiers for a food item.
- * Returns { small, standard, large } — each with full nutrition.
  */
 export function getAllPortionTiers(foodItem) {
   if (!foodItem) return null;
 
   const restaurantPortions = (foodItem.portions || []).filter(
-    (p) => p.restaurant_multiplier_applied != null
+    p => p.restaurant_multiplier_applied != null
   );
-
   if (restaurantPortions.length === 0) return null;
 
   const tiers = {};
@@ -101,35 +51,30 @@ export function getAllPortionTiers(foodItem) {
     else if (label.startsWith('home') || label.includes('home recipe')) tier = 'home_recipe';
     tiers[tier] = p;
   }
-
   return tiers;
 }
 
 /**
- * Get nutrition for a specific portion tier (small/standard/large).
- * Falls back to standard, then first available portion.
+ * Get nutrition for a specific portion tier.
  */
 export function getFoodNutrition(foodItem, tier = 'standard') {
   if (!foodItem) return null;
 
   const restaurantPortions = (foodItem.portions || []).filter(
-    (p) => p.restaurant_multiplier_applied != null
+    p => p.restaurant_multiplier_applied != null
   );
 
   let portion = null;
-
   if (tier && tier !== 'standard') {
     const label = tier.toLowerCase();
-    portion = restaurantPortions.find((p) => {
+    portion = restaurantPortions.find(p => {
       const pl = (p.label || '').toLowerCase();
       return pl.startsWith(label) || pl.includes(label + ' ');
     });
   }
-
-  if (!portion) portion = restaurantPortions.find((p) => p.is_default);
+  if (!portion) portion = restaurantPortions.find(p => p.is_default);
   if (!portion && restaurantPortions.length > 0) portion = restaurantPortions[0];
 
-  // Final fallback: scale per_100g to 250g
   const p100 = foodItem.per_100g || {};
   const scale = portion ? 1 : 2.5;
   const cal     = portion?.calories_kcal ?? (p100.calories_kcal != null ? p100.calories_kcal * scale : null);

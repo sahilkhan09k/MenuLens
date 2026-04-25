@@ -233,7 +233,7 @@ export default function Results() {
             {/* All dishes (neutral) */}
             {filteredRest.length > 0 && (
               <section className="mb-6">
-                <SectionHeader title="🍽️ All Dishes" count={filteredRest.length} />
+                <SectionHeader title="🍽️ Other Dishes" count={filteredRest.length} />
                 <div className="space-y-3">
                   {filteredRest.map(dish => <DishCard key={dish._id} dish={dish} />)}
                 </div>
