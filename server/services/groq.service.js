@@ -52,14 +52,21 @@ async function callExtractDishes(imageUrl) {
   const prompt = [
     'You are an expert Indian restaurant menu parser with deep knowledge of Indian cuisine.',
     '',
-    'Extract ALL food and beverage items visible in this menu image.',
+    'Look at this menu image and extract two things:',
+    '',
+    '1. RESTAURANT INFO (if visible on the menu):',
+    '   - Restaurant name (usually at the top of the menu)',
+    '   - Address (if printed on the menu)',
+    '   If not visible, use null for both.',
+    '',
+    '2. ALL FOOD AND BEVERAGE ITEMS visible in the menu.',
     '',
     'STRICT RULES:',
     '- ONLY extract items that are ACTUALLY VISIBLE in the image. Do NOT invent or hallucinate dishes.',
     '- If a dish name is partially cut off or unclear, use the raw text as-is — do not guess.',
     '- Do NOT add dishes you expect to see on an Indian menu — only what is printed here.',
     '',
-    'For each item, return:',
+    'For each dish item, return:',
     '- "name": the NORMALIZED canonical English name of the dish',
     '  * Fix OCR errors (e.g. "Btr Chkn" -> "Butter Chicken")',
     '  * Expand abbreviations (e.g. "Chx Tikka" -> "Chicken Tikka")',
@@ -69,17 +76,21 @@ async function callExtractDishes(imageUrl) {
     '- "description": any description visible on the menu, else empty string',
     '- "price": price as a number if visible, else null',
     '',
-    'Return ONLY a raw JSON array (no markdown, no code fences, no explanation):',
-    '[',
-    '  {',
-    '    "name": "normalized canonical dish name",',
-    '    "raw_name": "exact text from menu",',
-    '    "description": "description or empty string",',
-    '    "price": number or null',
-    '  }',
-    ']',
+    'Return ONLY a raw JSON object (no markdown, no code fences, no explanation):',
+    '{',
+    '  "restaurant_name": "name from menu or null",',
+    '  "restaurant_address": "address from menu or null",',
+    '  "dishes": [',
+    '    {',
+    '      "name": "normalized canonical dish name",',
+    '      "raw_name": "exact text from menu",',
+    '      "description": "description or empty string",',
+    '      "price": number or null',
+    '    }',
+    '  ]',
+    '}',
     '',
-    'If you cannot read the menu clearly, return [].',
+    'If you cannot read the menu clearly, return { "restaurant_name": null, "restaurant_address": null, "dishes": [] }',
   ].join('\n');
 
   const response = await groq.chat.completions.create({
@@ -103,24 +114,59 @@ async function callExtractDishes(imageUrl) {
 
   const raw = stripMarkdown(response.choices[0]?.message?.content || '');
   try {
-    const parsed = repairAndParseArray(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return [];
-    return parsed
-      .filter(item => item && (item.name || item.raw_name))
-      .map(item => ({
-        name:        item.name        || item.raw_name || '',
-        raw_name:    item.raw_name    || item.name     || '',
-        description: item.description || '',
-        price:       item.price       ?? null,
-      }));
+    // Try parsing as the new object format first
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // Fallback: try repair
+      const objects = repairAndParseArray(raw);
+      parsed = objects.length > 0 ? objects[0] : null;
+    }
+
+    // Handle new format { restaurant_name, restaurant_address, dishes: [...] }
+    if (parsed && Array.isArray(parsed.dishes)) {
+      return {
+        restaurant_name: parsed.restaurant_name || null,
+        restaurant_address: parsed.restaurant_address || null,
+        dishes: parsed.dishes
+          .filter(item => item && (item.name || item.raw_name))
+          .map(item => ({
+            name:        item.name        || item.raw_name || '',
+            raw_name:    item.raw_name    || item.name     || '',
+            description: item.description || '',
+            price:       item.price       ?? null,
+          })),
+      };
+    }
+
+    // Handle old format (plain array) for backward compatibility
+    if (Array.isArray(parsed)) {
+      return {
+        restaurant_name: null,
+        restaurant_address: null,
+        dishes: parsed
+          .filter(item => item && (item.name || item.raw_name))
+          .map(item => ({
+            name:        item.name        || item.raw_name || '',
+            raw_name:    item.raw_name    || item.name     || '',
+            description: item.description || '',
+            price:       item.price       ?? null,
+          })),
+      };
+    }
+
+    return { restaurant_name: null, restaurant_address: null, dishes: [] };
   } catch {
     console.error('[groq.service] extractDishes: invalid JSON for', imageUrl, '\nRaw:', raw);
-    return [];
+    return { restaurant_name: null, restaurant_address: null, dishes: [] };
   }
 }
 
 export async function extractDishes(imageUrls) {
-  const results = [];
+  const allDishes = [];
+  let restaurantName = null;
+  let restaurantAddress = null;
   const BATCH_SIZE = 3;
 
   for (let i = 0; i < imageUrls.length; i += BATCH_SIZE) {
@@ -140,16 +186,25 @@ export async function extractDishes(imageUrls) {
             return await callExtractDishes(imageUrl);
           } catch (retryErr) {
             console.error('[groq.service] extractDishes: second attempt failed, skipping image.', retryErr.message);
-            return [];
+            return { restaurant_name: null, restaurant_address: null, dishes: [] };
           }
         }
       })
     );
 
-    batchResults.forEach(dishes => results.push(...dishes));
+    for (const result of batchResults) {
+      // Take first non-null restaurant info found across all images
+      if (!restaurantName && result.restaurant_name) {
+        restaurantName = result.restaurant_name;
+      }
+      if (!restaurantAddress && result.restaurant_address) {
+        restaurantAddress = result.restaurant_address;
+      }
+      allDishes.push(...result.dishes);
+    }
   }
 
-  return results;
+  return { dishes: allDishes, restaurantName, restaurantAddress };
 }
 
 // ── Step 2: Batch nutrition estimation ───────────────────────────────────────

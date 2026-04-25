@@ -30,7 +30,6 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Normalize cookingMethod — AI can return anything, map to valid enum values
 const VALID_COOKING_METHODS = new Set([
   'grilled', 'fried', 'steamed', 'baked', 'raw', 'boiled', 'roasted', 'stir-fried', 'unknown',
 ]);
@@ -40,7 +39,7 @@ const COOKING_METHOD_MAP = {
   'pan-fried': 'fried', 'shallow fried': 'fried',
   'tandoor': 'grilled', 'tandoori': 'grilled', 'bbq': 'grilled',
   'barbecue': 'grilled', 'smoked': 'grilled',
-  'sauteed': 'stir-fried', 'sautéed': 'stir-fried',
+  'sauteed': 'stir-fried', 'sauteed': 'stir-fried',
   'poached': 'boiled', 'simmered': 'boiled', 'pressure cooked': 'boiled',
   'microwaved': 'baked', 'toasted': 'baked',
 };
@@ -63,9 +62,26 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
   try {
     console.log('[pipeline] Starting for scan ' + scan._id + ', images: ' + cloudinaryUrls.length);
 
-    // Step 1: Extract dishes
-    const rawDishes = await extractDishes(cloudinaryUrls);
+    // Step 1: Extract dishes + restaurant info from images
+    const extraction = await extractDishes(cloudinaryUrls);
+    const rawDishes = extraction.dishes;
+    const extractedRestaurantName = extraction.restaurantName;
+    const extractedRestaurantAddress = extraction.restaurantAddress;
+
     console.log('[pipeline] Extracted ' + rawDishes.length + ' dishes:', rawDishes.map(d => d.name));
+    if (extractedRestaurantName) console.log('[pipeline] Restaurant from menu: ' + extractedRestaurantName);
+    if (extractedRestaurantAddress) console.log('[pipeline] Address from menu: ' + extractedRestaurantAddress);
+
+    // Update scan with restaurant info from menu image if not already set
+    if (extractedRestaurantName && !scan.restaurantName) {
+      scan.restaurantName = extractedRestaurantName;
+    }
+    if (extractedRestaurantAddress) {
+      if (!scan.restaurantLocation) scan.restaurantLocation = {};
+      if (!scan.restaurantLocation.address) {
+        scan.restaurantLocation.address = extractedRestaurantAddress;
+      }
+    }
 
     // Deduplicate by normalized name
     const seen = new Set();
@@ -172,7 +188,6 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
         }
       }
 
-      // Skip dish entirely if nutrition is null — can't score or save without it
       if (!nutritionData.estimatedNutrition) {
         console.warn('[pipeline] Skipping ' + rawDish.name + ' — no nutrition data available');
         continue;
@@ -302,12 +317,16 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
 export async function uploadScan(req, res) {
   try {
     if (!req.files || req.files.length === 0 || req.files.length > 10) {
-      return res.status(400).json({ message: 'Please upload 1–10 images.' });
+      return res.status(400).json({ message: 'Please upload 1-10 images.' });
     }
 
     const hashes = req.files.map((f) => hashBuffer(f.buffer));
     const cloudinaryUrls = await Promise.all(req.files.map((f) => uploadToCloudinary(f.buffer)));
 
+    // Priority order for restaurant name:
+    // 1. User typed it manually
+    // 2. Google Places API (from GPS coords)
+    // 3. Extracted from menu image by AI (done in pipeline)
     let restaurantName = req.body.restaurantName || '';
     let restaurantLocation = null;
 
@@ -317,12 +336,16 @@ export async function uploadScan(req, res) {
     if (!isNaN(lat) && !isNaN(lng)) {
       restaurantLocation = { lat, lng };
       if (!restaurantName) {
-        const place = await findNearestRestaurant(lat, lng);
-        if (place) {
-          restaurantName = place.name;
-          restaurantLocation.address = place.address;
-          restaurantLocation.placeId = place.placeId;
-          console.log('[scan] Auto-filled restaurant: ' + restaurantName);
+        try {
+          const place = await findNearestRestaurant(lat, lng);
+          if (place) {
+            restaurantName = place.name;
+            restaurantLocation.address = place.address;
+            restaurantLocation.placeId = place.placeId;
+            console.log('[scan] Auto-filled restaurant from Places API: ' + restaurantName);
+          }
+        } catch (placesErr) {
+          console.warn('[scan] Places API failed:', placesErr.message);
         }
       }
     }
@@ -384,13 +407,13 @@ export async function getHistory(req, res) {
 
 export async function getLastScan(req, res) {
   try {
-    const scan = await Scan.findOne({ userId: req.user.id, status: 'complete' })
+    const scans = await Scan.find({ userId: req.user.id, status: 'complete' })
       .sort({ createdAt: -1 })
-      .populate('dishes', 'name matchScore tags allergenFlags estimatedNutrition cookingMethod isSaved')
+      .limit(5)
+      .select('_id restaurantName restaurantLocation totalDishesFound createdAt scanQuality')
       .lean();
 
-    if (!scan) return res.json({ scan: null });
-    res.json({ scan });
+    res.json({ scans });
   } catch (err) {
     console.error('[scan] getLastScan error:', err.message);
     res.status(500).json({ message: 'Server error.' });
