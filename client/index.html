@@ -2,9 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>MenuLens — AI Menu Analyzer</title>
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#22c55e" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- iOS PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MenuLens" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+
+    <!-- SEO / Social -->
+    <meta name="description" content="Scan any restaurant menu and get personalized dish recommendations based on your dietary goals, allergies, and nutritional needs." />
+    <meta property="og:title" content="MenuLens — AI Menu Analyzer" />
+    <meta property="og:description" content="Scan any menu. Eat smarter." />
+    <meta property="og:type" content="website" />
   </head>
   <body>
     <div id="root"></div>
