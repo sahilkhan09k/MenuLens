@@ -50,15 +50,10 @@ export default function Processing() {
     if (status === 'done') {
       navigate(`/results/${scanId}`, { replace: true });
     }
-    // On error, fetch the scan to get the specific error message
+    // On error, the scan may have been deleted (pipeline failure cleans up)
+    // Show generic error — no need to fetch the deleted scan
     if (status === 'error') {
-      api.get(`/api/scan/${scanId}`)
-        .then(res => {
-          const errMsg = res.data?.errorMessage;
-          if (errMsg === 'no_dishes_found') setErrorType('no_dishes_found');
-          else setErrorType('generic');
-        })
-        .catch(() => setErrorType('generic'));
+      setErrorType('generic');
     }
   }, [status, scanId, navigate]);
 

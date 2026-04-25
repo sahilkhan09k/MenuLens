@@ -208,7 +208,21 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
         scanId: scan._id,
         name: rawDish.name,
         description: rawDish.description || '',
-        estimatedPrice: rawDish.price ?? undefined,
+        // Sanitize price — menus with HALF/FULL pricing return objects, not numbers
+        // Take the FULL price if available, else HALF, else null
+        estimatedPrice: (() => {
+          const p = rawDish.price;
+          if (p == null) return undefined;
+          if (typeof p === 'number') return p;
+          if (typeof p === 'object') {
+            const full = p.FULL ?? p.full ?? p.Full;
+            const half = p.HALF ?? p.half ?? p.Half;
+            const val = full ?? half ?? Object.values(p)[0];
+            return typeof val === 'number' ? val : undefined;
+          }
+          const parsed = parseFloat(p);
+          return isNaN(parsed) ? undefined : parsed;
+        })(),
         estimatedNutrition: nutritionData.estimatedNutrition,
         confidenceScore: nutritionData.confidenceScore,
         cookingMethod: normalizeCookingMethod(nutritionData.cookingMethod),
@@ -306,9 +320,18 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
     console.log('[pipeline] Done. ' + dishIds.length + ' dishes saved, ' + recommendedIds.length + ' recommended, ' + avoidIds.length + ' flagged.');
   } catch (err) {
     console.error('[scan] AI pipeline error:', err.message);
-    scan.status = 'failed';
-    scan.errorMessage = err.message;
-    await scan.save();
+    // Delete the scan entirely on failure — no point keeping a failed empty scan in DB
+    try {
+      await Dish.deleteMany({ scanId: scan._id });
+      await scan.deleteOne();
+      console.log('[pipeline] Cleaned up failed scan ' + scan._id);
+    } catch (cleanupErr) {
+      console.error('[pipeline] Cleanup failed:', cleanupErr.message);
+      // Fallback: at least mark it failed so UI can handle it
+      scan.status = 'failed';
+      scan.errorMessage = err.message;
+      await scan.save().catch(() => {});
+    }
   }
 }
 
