@@ -39,6 +39,18 @@ const scanSchema = new Schema({
   totalMatchingDishes: { type: Number, default: 0 },
   totalFlaggedDishes: { type: Number, default: 0 },
   isSaved: { type: Boolean, default: false },
+  // Recommended meal combos — computed after all dishes are scored
+  recommendedCombos: [{
+    label:        String,
+    starter:      { _id: { type: Schema.Types.ObjectId, ref: 'Dish' }, name: String, matchScore: Number },
+    main:         { _id: { type: Schema.Types.ObjectId, ref: 'Dish' }, name: String, matchScore: Number },
+    dessertDrink: { _id: { type: Schema.Types.ObjectId, ref: 'Dish' }, name: String, matchScore: Number },
+    totalCalories: Number,
+    totalProtein:  Number,
+    totalCarbs:    Number,
+    totalFat:      Number,
+    comboScore:    Number,
+  }],
   createdAt: { type: Date, default: Date.now },
 });
 

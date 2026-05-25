@@ -37,6 +37,7 @@ export function processDishNutrition(rawDish, groqResult) {
     confidenceScore,
     cookingMethod: groqResult.cookingMethod || 'unknown',
     estimatedIngredients: groqResult.estimatedIngredients || [],
+    dishDescription: groqResult.dishDescription || '',
     recommendReason: groqResult.recommendReason || '',
     avoidReasons: Array.isArray(groqResult.avoidReasons) ? groqResult.avoidReasons : [],
   };

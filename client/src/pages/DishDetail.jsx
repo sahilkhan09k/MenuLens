@@ -62,6 +62,7 @@ export default function DishDetail() {
   const [showPortionPicker, setShowPortionPicker] = useState(false);
   const [selectedTier, setSelectedTier] = useState('standard');
   const [selectedNutrition, setSelectedNutrition] = useState(null);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   useEffect(() => {
     api.get(`/api/dish/${dishId}`)
@@ -150,6 +151,24 @@ export default function DishDetail() {
         {dish.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
             {dish.tags.map(tag => <TagChip key={tag} tag={tag} />)}
+          </div>
+        )}
+
+        {/* Dish description box — culinary description with read more */}
+        {dish.dishDescription && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+            <h2 className="text-sm font-semibold text-gray-700 mb-2">About this dish</h2>
+            <p className={`text-sm text-gray-600 leading-relaxed ${descExpanded ? '' : 'line-clamp-3'}`}>
+              {dish.dishDescription}
+            </p>
+            {dish.dishDescription.length > 160 && (
+              <button
+                onClick={() => setDescExpanded(e => !e)}
+                className="text-xs text-green-600 font-medium mt-1.5"
+              >
+                {descExpanded ? 'Show less ▲' : 'Read more ▼'}
+              </button>
+            )}
           </div>
         )}
 

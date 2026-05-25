@@ -6,11 +6,9 @@ import User from '../models/User.model.js';
 import FoodReviewQueue from '../models/FoodReviewQueue.model.js';
 import { extractDishes, estimateNutritionBatch } from '../services/groq.service.js';
 import { processDishNutrition } from '../services/nutrition.service.js';
-import { scoreDish, generateTags, classifyDish } from '../services/recommendation.service.js';
+import { scoreDish, generateTags, classifyDish, buildRecommendedCombos } from '../services/recommendation.service.js';
 import { lookupFoodItem, getFoodNutrition } from '../services/foodDB.service.js';
 import { findNearestRestaurant } from '../services/places.service.js';
-
-// ── helpers ──────────────────────────────────────────────────────────────────
 
 function hashBuffer(buffer) {
   return crypto.createHash('md5').update(buffer).digest('hex');
@@ -39,7 +37,7 @@ const COOKING_METHOD_MAP = {
   'pan-fried': 'fried', 'shallow fried': 'fried',
   'tandoor': 'grilled', 'tandoori': 'grilled', 'bbq': 'grilled',
   'barbecue': 'grilled', 'smoked': 'grilled',
-  'sauteed': 'stir-fried', 'sauteed': 'stir-fried',
+  'sauteed': 'stir-fried',
   'poached': 'boiled', 'simmered': 'boiled', 'pressure cooked': 'boiled',
   'microwaved': 'baked', 'toasted': 'baked',
 };
@@ -52,7 +50,18 @@ function normalizeCookingMethod(method) {
   return 'unknown';
 }
 
-// ── async AI pipeline (fire-and-forget) ──────────────────────────────────────
+function sanitizePrice(p) {
+  if (p == null) return undefined;
+  if (typeof p === 'number') return p;
+  if (typeof p === 'object') {
+    const full = p.FULL ?? p.full ?? p.Full;
+    const half = p.HALF ?? p.half ?? p.Half;
+    const val = full ?? half ?? Object.values(p)[0];
+    return typeof val === 'number' ? val : undefined;
+  }
+  const parsed = parseFloat(p);
+  return isNaN(parsed) ? undefined : parsed;
+}
 
 const PARTIAL_SCAN_THRESHOLD = 3;
 const LOW_CONFIDENCE_THRESHOLD = 50;
@@ -62,17 +71,13 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
   try {
     console.log('[pipeline] Starting for scan ' + scan._id + ', images: ' + cloudinaryUrls.length);
 
-    // Step 1: Extract dishes + restaurant info from images
     const extraction = await extractDishes(cloudinaryUrls);
     const rawDishes = extraction.dishes;
     const extractedRestaurantName = extraction.restaurantName;
     const extractedRestaurantAddress = extraction.restaurantAddress;
 
     console.log('[pipeline] Extracted ' + rawDishes.length + ' dishes:', rawDishes.map(d => d.name));
-    if (extractedRestaurantName) console.log('[pipeline] Restaurant from menu: ' + extractedRestaurantName);
-    if (extractedRestaurantAddress) console.log('[pipeline] Address from menu: ' + extractedRestaurantAddress);
 
-    // Update scan with restaurant info from menu image if not already set
     if (extractedRestaurantName && !scan.restaurantName) {
       scan.restaurantName = extractedRestaurantName;
     }
@@ -83,7 +88,6 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
       }
     }
 
-    // Deduplicate by normalized name
     const seen = new Set();
     const uniqueDishes = rawDishes.filter(d => {
       const key = d.name.toLowerCase().trim();
@@ -96,7 +100,6 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
       console.log('[pipeline] Deduplicated: removed ' + duplicatesRemoved + ' duplicate dish names');
     }
 
-    // Scan quality assessment
     if (uniqueDishes.length === 0) {
       scan.status = 'failed';
       scan.errorMessage = 'no_dishes_found';
@@ -113,13 +116,11 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
       scan.scanQuality = 'good';
     }
 
-    // Step 2: DB lookup
     console.log('[pipeline] Looking up ' + uniqueDishes.length + ' dishes in food DB...');
-    const dbResults = await Promise.all(uniqueDishes.map((d) => lookupFoodItem(d.name)));
+    const dbResults = await Promise.all(uniqueDishes.map(d => lookupFoodItem(d.name)));
     const dbHits = dbResults.filter(Boolean).length;
     console.log('[pipeline] DB hits: ' + dbHits + '/' + uniqueDishes.length);
 
-    // Step 3: AI batch for misses
     const aiDishes = uniqueDishes.filter((_, i) => !dbResults[i]);
     let aiResults = [];
     if (aiDishes.length > 0) {
@@ -138,8 +139,8 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
     const recommendedIds = [];
     const goodIds = [];
     const avoidIds = [];
+    const savedDishObjects = []; // for combo building
 
-    // Step 4: Process each dish
     for (let i = 0; i < uniqueDishes.length; i++) {
       const rawDish = uniqueDishes[i];
       const dbItem = dbResults[i];
@@ -164,6 +165,7 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
           recommendReason: '',
           avoidReasons: [],
           estimatedIngredients: [],
+          dishDescription: dbItem.description || '',  // from FoodItem DB
           multiplierNote: dbNutrition.multiplierNote || null,
           portionTiers: dbNutrition.portionTiers ? {
             small:    dbNutrition.portionTiers.small    ? { label: dbNutrition.portionTiers.small.label,    weight_grams: dbNutrition.portionTiers.small.weight_grams,    calories_kcal: dbNutrition.portionTiers.small.calories_kcal,    protein_g: dbNutrition.portionTiers.small.protein_g,    carbs_g: dbNutrition.portionTiers.small.carbs_g,    fat_g: dbNutrition.portionTiers.small.fat_g    } : null,
@@ -176,11 +178,9 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
         const nutritionResult = mergedNutrition[i];
         nutritionData = processDishNutrition(rawDish, nutritionResult);
         dataSource = 'ai';
-
         if (nutritionData.confidenceScore > 0) {
           nutritionData.confidenceScore = Math.max(AI_CONFIDENCE_FLOOR, nutritionData.confidenceScore);
         }
-
         if (nutritionResult) {
           console.log('[pipeline] ' + rawDish.name + ': AI cal=' + nutritionResult.calories?.min + '-' + nutritionResult.calories?.max + ', confidence=' + nutritionData.confidenceScore);
         } else {
@@ -208,21 +208,8 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
         scanId: scan._id,
         name: rawDish.name,
         description: rawDish.description || '',
-        // Sanitize price — menus with HALF/FULL pricing return objects, not numbers
-        // Take the FULL price if available, else HALF, else null
-        estimatedPrice: (() => {
-          const p = rawDish.price;
-          if (p == null) return undefined;
-          if (typeof p === 'number') return p;
-          if (typeof p === 'object') {
-            const full = p.FULL ?? p.full ?? p.Full;
-            const half = p.HALF ?? p.half ?? p.Half;
-            const val = full ?? half ?? Object.values(p)[0];
-            return typeof val === 'number' ? val : undefined;
-          }
-          const parsed = parseFloat(p);
-          return isNaN(parsed) ? undefined : parsed;
-        })(),
+        dishDescription: nutritionData.dishDescription || '',
+        estimatedPrice: sanitizePrice(rawDish.price),
         estimatedNutrition: nutritionData.estimatedNutrition,
         confidenceScore: nutritionData.confidenceScore,
         cookingMethod: normalizeCookingMethod(nutritionData.cookingMethod),
@@ -245,7 +232,19 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
       if (classification === 'good')        goodIds.push(dish._id);
       if (classification === 'avoid')       avoidIds.push(dish._id);
 
-      // Auto-log AI-sourced dishes to review queue
+      // Collect for combo building — include all non-avoided dishes
+      if (classification !== 'avoid') {
+        savedDishObjects.push({
+          _id: dish._id,
+          name: dish.name,
+          category: rawDish.category || 'other',  // LLM-provided category
+          matchScore,
+          tags,
+          cookingMethod: dish.cookingMethod,
+          estimatedNutrition: nutritionData.estimatedNutrition,
+        });
+      }
+
       if (dataSource === 'ai') {
         try {
           const confidence = nutritionData.confidenceScore || 0;
@@ -295,6 +294,12 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
       }
     }
 
+    // Build recommended combos from all scored dishes
+    const recommendedCombos = buildRecommendedCombos(savedDishObjects, userProfile);
+    if (recommendedCombos.length > 0) {
+      console.log('[pipeline] Built ' + recommendedCombos.length + ' recommended combo(s)');
+    }
+
     scan.status = 'complete';
     scan.dishes = dishIds;
     scan.recommendedDishes = recommendedIds;
@@ -302,8 +307,8 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
     scan.totalDishesFound = dishIds.length;
     scan.totalMatchingDishes = recommendedIds.length;
     scan.totalFlaggedDishes = avoidIds.length;
+    scan.recommendedCombos = recommendedCombos;
 
-    // Post-pipeline quality check
     if (scan.scanQuality !== 'partial') {
       const allDishes = await Dish.find({ scanId: scan._id }).select('confidenceScore dataSource');
       const aiOnlyDishes = allDishes.filter(d => d.dataSource === 'ai');
@@ -317,17 +322,14 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
     }
 
     await scan.save();
-    console.log('[pipeline] Done. ' + dishIds.length + ' dishes saved, ' + recommendedIds.length + ' recommended, ' + avoidIds.length + ' flagged.');
+    console.log('[pipeline] Done. ' + dishIds.length + ' dishes saved, ' + recommendedIds.length + ' recommended, ' + avoidIds.length + ' flagged, ' + recommendedCombos.length + ' combos.');
   } catch (err) {
     console.error('[scan] AI pipeline error:', err.message);
-    // Delete the scan entirely on failure — no point keeping a failed empty scan in DB
     try {
       await Dish.deleteMany({ scanId: scan._id });
       await scan.deleteOne();
       console.log('[pipeline] Cleaned up failed scan ' + scan._id);
     } catch (cleanupErr) {
-      console.error('[pipeline] Cleanup failed:', cleanupErr.message);
-      // Fallback: at least mark it failed so UI can handle it
       scan.status = 'failed';
       scan.errorMessage = err.message;
       await scan.save().catch(() => {});
@@ -335,21 +337,15 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
   }
 }
 
-// ── controllers ───────────────────────────────────────────────────────────────
-
 export async function uploadScan(req, res) {
   try {
     if (!req.files || req.files.length === 0 || req.files.length > 10) {
       return res.status(400).json({ message: 'Please upload 1-10 images.' });
     }
 
-    const hashes = req.files.map((f) => hashBuffer(f.buffer));
-    const cloudinaryUrls = await Promise.all(req.files.map((f) => uploadToCloudinary(f.buffer)));
+    const hashes = req.files.map(f => hashBuffer(f.buffer));
+    const cloudinaryUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
 
-    // Priority order for restaurant name:
-    // 1. User typed it manually
-    // 2. Google Places API (from GPS coords)
-    // 3. Extracted from menu image by AI (done in pipeline)
     let restaurantName = req.body.restaurantName || '';
     let restaurantLocation = null;
 

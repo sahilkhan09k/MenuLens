@@ -424,7 +424,190 @@ export function generateTags(dish, score) {
   return tags;
 }
 
-// ── Classification — 4 tiers ──────────────────────────────────────────────────
+// ── Dish category detection for combo building ───────────────────────────────
+// Uses LLM-provided category from extraction (primary)
+// Falls back to keyword matching only if category is missing/unknown
+
+const STARTER_KEYWORDS = [
+  'soup', 'tikka', 'kebab', 'pakoda', 'pakora', 'samosa', 'roll', 'spring roll',
+  'lollipop', 'lollypop', 'wings', 'drums', 'heaven', 'chaap', 'chaat', 'bhel',
+  'manchurian', 'manchow', 'starter', 'appetizer', 'snack', 'kachori', 'vada',
+  'cutlet', 'seekh', 'galouti', 'shammi', 'boti', 'hara bhara',
+  'honey chilli', 'crispy corn',
+];
+
+const MAIN_KEYWORDS = [
+  'biryani', 'pulao', 'curry', 'masala', 'dal', 'daal', 'makhani', 'korma',
+  'rogan josh', 'kadhai', 'karahi', 'butter chicken', 'palak', 'saag',
+  'thali', 'naan', 'roti', 'paratha', 'dosa', 'uttapam', 'idli', 'pongal',
+  'khichdi', 'rajma', 'chana', 'chole', 'fried rice', 'noodles', 'hakka',
+];
+
+const DESSERT_DRINK_KEYWORDS = [
+  'gulab jamun', 'rasgulla', 'jalebi', 'halwa', 'kheer', 'rasmalai', 'ladoo',
+  'barfi', 'ice cream', 'kulfi', 'brownie', 'cake', 'dessert', 'sweet', 'payasam',
+  'chai', 'tea', 'coffee', 'lassi', 'buttermilk', 'chaas', 'juice',
+  'soda', 'water', 'sharbat', 'nimbu pani', 'smoothie', 'shake',
+];
+
+// Map LLM categories to combo roles
+const LLM_CATEGORY_MAP = {
+  starter:  'starter',
+  main:     'main',
+  dessert:  'dessert_drink',
+  beverage: 'dessert_drink',
+  bread:    'main',      // bread goes with main course
+  rice:     'main',      // rice dishes are mains
+  salad:    'starter',   // salads are starters
+  other:    null,        // will fall back to keyword detection
+};
+
+function detectDishCategory(dish) {
+  // Primary: use LLM-provided category
+  const llmCategory = (dish.category || '').toLowerCase().trim();
+  if (llmCategory && LLM_CATEGORY_MAP[llmCategory] !== undefined) {
+    const mapped = LLM_CATEGORY_MAP[llmCategory];
+    if (mapped !== null) return mapped;
+    // mapped === null means 'other' — fall through to keyword detection
+  }
+
+  // Fallback: keyword matching
+  const name = (dish.name || '').toLowerCase();
+  const tags = (dish.tags || []).join(' ').toLowerCase();
+  const text = name + ' ' + tags;
+
+  if (DESSERT_DRINK_KEYWORDS.some(kw => text.includes(kw))) return 'dessert_drink';
+  if (STARTER_KEYWORDS.some(kw => text.includes(kw))) return 'starter';
+  if (MAIN_KEYWORDS.some(kw => text.includes(kw))) return 'main';
+
+  // Last resort: calorie-based heuristic
+  const cal = dish.estimatedNutrition?.calories?.avg || 0;
+  if (cal < 200) return 'dessert_drink';
+  if (cal < 400) return 'starter';
+  return 'main';
+}
+
+/**
+ * Build recommended meal combos from scored dishes.
+ * Selects the best starter + main + dessert/drink combination
+ * optimized for the user's goal.
+ *
+ * Logic:
+ * - Only uses dishes with matchScore >= 45 (good or recommended tier)
+ * - Picks top candidates per category by matchScore
+ * - Validates combo against user's daily calorie target
+ * - Returns up to 2 combos (best + runner-up with different main)
+ */
+export function buildRecommendedCombos(dishes, userProfile) {
+  if (!dishes || dishes.length < 2) return [];
+
+  // Calculate TDEE for combo validation
+  let tdee = userProfile.dailyCalories || 2000;
+  const goal = userProfile.goal;
+  let targetCalories = tdee;
+  if (goal === 'lose_weight')  targetCalories = tdee * 0.80;
+  if (goal === 'build_muscle') targetCalories = tdee * 1.10;
+  // A full meal (starter + main + dessert) should be 50-70% of daily target
+  const comboCalMax = targetCalories * 0.70;
+  const comboCalMin = targetCalories * 0.25; // at least 25% — avoid trivial combos
+
+  const bodyWeight = userProfile.weight || 70;
+  // For muscle building: combo should hit at least 0.5g/kg protein
+  const comboProteinTarget = goal === 'build_muscle' ? bodyWeight * 0.5 : 0;
+
+  // Filter to usable dishes (score >= 45, has nutrition)
+  const usable = dishes.filter(d =>
+    d.matchScore >= 45 &&
+    d.estimatedNutrition?.calories?.avg != null
+  );
+
+  if (usable.length < 2) return [];
+
+  // Categorize dishes
+  const starters      = usable.filter(d => detectDishCategory(d) === 'starter').sort((a, b) => b.matchScore - a.matchScore);
+  const mains         = usable.filter(d => detectDishCategory(d) === 'main').sort((a, b) => b.matchScore - a.matchScore);
+  const dessertDrinks = usable.filter(d => detectDishCategory(d) === 'dessert_drink').sort((a, b) => b.matchScore - a.matchScore);
+
+  // Need at least a main dish to build a combo
+  if (mains.length === 0) return [];
+
+  const combos = [];
+
+  // Try to build combos with top 3 mains
+  for (let mi = 0; mi < Math.min(3, mains.length); mi++) {
+    const main = mains[mi];
+    const mainCal = main.estimatedNutrition?.calories?.avg || 0;
+    const mainProtein = main.estimatedNutrition?.protein?.avg || 0;
+
+    // Pick best starter that fits calorie budget
+    let starter = null;
+    for (const s of starters) {
+      const sCal = s.estimatedNutrition?.calories?.avg || 0;
+      if (mainCal + sCal <= comboCalMax) {
+        starter = s;
+        break;
+      }
+    }
+
+    // Pick best dessert/drink that fits remaining budget
+    let dessertDrink = null;
+    const usedCal = mainCal + (starter?.estimatedNutrition?.calories?.avg || 0);
+    for (const d of dessertDrinks) {
+      const dCal = d.estimatedNutrition?.calories?.avg || 0;
+      if (usedCal + dCal <= comboCalMax) {
+        dessertDrink = d;
+        break;
+      }
+    }
+
+    // Build combo — need at least main + one other
+    const comboDishes = [starter, main, dessertDrink].filter(Boolean);
+    if (comboDishes.length < 2) continue;
+
+    // Calculate combined nutrition
+    const totalCal     = comboDishes.reduce((s, d) => s + (d.estimatedNutrition?.calories?.avg || 0), 0);
+    const totalProtein = comboDishes.reduce((s, d) => s + (d.estimatedNutrition?.protein?.avg  || 0), 0);
+    const totalCarbs   = comboDishes.reduce((s, d) => s + (d.estimatedNutrition?.carbs?.avg    || 0), 0);
+    const totalFat     = comboDishes.reduce((s, d) => s + (d.estimatedNutrition?.fat?.avg      || 0), 0);
+
+    // Validate combo meets minimum thresholds
+    if (totalCal < comboCalMin) continue;
+    if (goal === 'build_muscle' && totalProtein < comboProteinTarget * 0.7) continue; // needs decent protein
+
+    // Combo score = weighted average of component scores
+    const comboScore = Math.round(
+      comboDishes.reduce((s, d) => s + d.matchScore, 0) / comboDishes.length
+    );
+
+    // Generate combo label based on goal
+    let comboLabel = '';
+    if (goal === 'build_muscle') {
+      comboLabel = totalProtein >= comboProteinTarget
+        ? 'High Protein Meal'
+        : 'Muscle Building Meal';
+    } else if (goal === 'lose_weight') {
+      comboLabel = totalCal <= targetCalories * 0.40 ? 'Light Meal' : 'Balanced Meal';
+    } else {
+      comboLabel = 'Balanced Meal';
+    }
+
+    combos.push({
+      label: comboLabel,
+      starter:      starter      ? { _id: starter._id,      name: starter.name,      matchScore: starter.matchScore }      : null,
+      main:         main         ? { _id: main._id,          name: main.name,          matchScore: main.matchScore }          : null,
+      dessertDrink: dessertDrink ? { _id: dessertDrink._id,  name: dessertDrink.name,  matchScore: dessertDrink.matchScore }  : null,
+      totalCalories: Math.round(totalCal),
+      totalProtein:  Math.round(totalProtein * 10) / 10,
+      totalCarbs:    Math.round(totalCarbs   * 10) / 10,
+      totalFat:      Math.round(totalFat     * 10) / 10,
+      comboScore,
+    });
+
+    if (combos.length >= 2) break; // max 2 combos
+  }
+
+  return combos;
+}
 
 export function classifyDish(dish, userProfile = {}) {
   const score = dish.matchScore;

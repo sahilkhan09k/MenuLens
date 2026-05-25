@@ -26,6 +26,63 @@ function SkeletonCard() {
   );
 }
 
+function ComboCard({ combo, onDishClick }) {
+  const dishes = [
+    combo.starter      ? { ...combo.starter,      icon: '🥗', role: 'Starter' }      : null,
+    combo.main         ? { ...combo.main,          icon: '🍛', role: 'Main' }          : null,
+    combo.dessertDrink ? { ...combo.dessertDrink,  icon: '🍮', role: 'Dessert/Drink' } : null,
+  ].filter(Boolean);
+
+  return (
+    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-3">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+          {combo.label}
+        </span>
+        <span className="text-xs text-gray-500">Score: {combo.comboScore}</span>
+      </div>
+
+      {/* Dish list */}
+      <div className="space-y-2 mb-3">
+        {dishes.map((dish, i) => (
+          <button
+            key={dish._id}
+            onClick={() => onDishClick(dish._id)}
+            className="w-full flex items-center gap-2 text-left hover:bg-white/60 rounded-lg px-2 py-1 transition-colors"
+          >
+            <span className="text-base shrink-0">{dish.icon}</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs text-gray-500">{dish.role}</span>
+              <p className="text-sm font-medium text-gray-800 truncate">{dish.name}</p>
+            </div>
+            <span className="text-xs text-green-600 font-medium shrink-0">{dish.matchScore}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Combined nutrition */}
+      <div className="flex gap-3 pt-2 border-t border-green-200">
+        <div className="text-center flex-1">
+          <p className="text-xs font-bold text-gray-800">{combo.totalCalories}</p>
+          <p className="text-xs text-gray-500">kcal</p>
+        </div>
+        <div className="text-center flex-1">
+          <p className="text-xs font-bold text-gray-800">{combo.totalProtein}g</p>
+          <p className="text-xs text-gray-500">protein</p>
+        </div>
+        <div className="text-center flex-1">
+          <p className="text-xs font-bold text-gray-800">{combo.totalCarbs}g</p>
+          <p className="text-xs text-gray-500">carbs</p>
+        </div>
+        <div className="text-center flex-1">
+          <p className="text-xs font-bold text-gray-800">{combo.totalFat}g</p>
+          <p className="text-xs text-gray-500">fat</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Results() {
   const { scanId } = useParams();
   const navigate = useNavigate();
@@ -195,6 +252,20 @@ export default function Results() {
           </section>
         ) : (
           <>
+            {/* Recommended Combos */}
+            {scan.recommendedCombos?.length > 0 && (
+              <section className="mb-6">
+                <SectionHeader title="🍱 Recommended Combo" count={null} />
+                {scan.recommendedCombos.map((combo, i) => (
+                  <ComboCard
+                    key={i}
+                    combo={combo}
+                    onDishClick={(dishId) => navigate('/dish/' + dishId)}
+                  />
+                ))}
+              </section>
+            )}
+
             {/* Recommended */}
             {filteredRecommended.length > 0 && (
               <section className="mb-6">

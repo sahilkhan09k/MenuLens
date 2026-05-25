@@ -19,7 +19,8 @@ const dishSchema = new Schema({
     index: true,
   },
   name: String,
-  description: String,
+  description: String,       // raw description from menu
+  dishDescription: String,   // rich culinary description (AI-generated or from FoodItem DB)
   estimatedNutrition: {
     calories: macroRangeSchema,
     protein: macroRangeSchema,

@@ -14,7 +14,8 @@
     "seed:indo": "node scripts/seedIndoChinese.mjs",
     "seed:street": "node scripts/seedStreetFood.mjs",
     "seed:all": "node scripts/seedFoodDB.mjs && node scripts/seedMissingDishes.mjs && node scripts/seedIndoChinese.mjs && node scripts/seedStreetFood.mjs",
-    "generate:hindi": "node scripts/generateHindiAliases.mjs"
+    "generate:hindi": "node scripts/generateHindiAliases.mjs",
+    "generate:descriptions": "node scripts/generateDescriptions.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

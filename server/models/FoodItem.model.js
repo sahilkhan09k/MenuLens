@@ -50,6 +50,7 @@ const foodItemSchema = new Schema({
   canonical_name: { type: String, required: true, unique: true, lowercase: true, trim: true },
   display_name_en: { type: String, required: true },
   display_name_hi: String,
+  description: String, // culinary description — what it contains, how it tastes
   category: String,
   subcategory: String,
   cuisine_region: String,
