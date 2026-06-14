@@ -21,20 +21,32 @@ export async function signup(req, res) {
   if (existing) return res.status(409).json({ message: 'Email already in use.' });
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const plainOtp = generateOtp();
-  const hashedOtp = await bcrypt.hash(plainOtp, 10);
 
-  await User.create({
+  // OTP temporarily disabled — auto-verify users on signup
+  const savedUser = await User.create({
     name: name.trim(),
     email: email.toLowerCase().trim(),
     password: hashedPassword,
-    isVerified: false,
-    otp: hashedOtp,
-    otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
+    isVerified: true,
   });
 
-  await sendOtpEmail(email, plainOtp);
-  return res.status(201).json({ message: 'Account created. Check your email for OTP.' });
+  const accessToken = generateAccessToken(savedUser._id);
+  const refreshToken = generateRefreshToken(savedUser._id);
+  savedUser.refreshToken = refreshToken;
+  await savedUser.save();
+
+  return res.status(201).json({
+    message: 'Account created.',
+    accessToken,
+    refreshToken,
+    user: {
+      _id: savedUser._id,
+      name: savedUser.name,
+      email: savedUser.email,
+      onboardingComplete: savedUser.onboardingComplete,
+      profile: savedUser.profile,
+    },
+  });
 }
 
 export async function verifyOtp(req, res) {

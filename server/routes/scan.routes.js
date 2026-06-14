@@ -7,6 +7,7 @@ import {
   getScan,
   getHistory,
   getLastScan,
+  getRestaurantHistory,
   toggleSave,
   deleteScan,
 } from '../controllers/scan.controller.js';
@@ -18,6 +19,7 @@ router.use(protect);
 router.post('/', scanUploadLimiter, uploadImages, handleUploadError, uploadScan);
 router.get('/history', getHistory);
 router.get('/last', getLastScan);
+router.get('/restaurant-history', getRestaurantHistory);
 router.get('/:scanId', getScan);
 router.put('/:scanId/save', toggleSave);
 router.delete('/:scanId', deleteScan);

@@ -5,6 +5,8 @@ import Navbar from '../components/Navbar';
 import TagChip from '../components/TagChip';
 import PortionPicker from '../components/PortionPicker';
 import FeedbackButton from '../components/FeedbackButton';
+import ShareCardModal from '../components/ShareCard';
+import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { formatRange, formatAvg } from '../utils/helpers';
 
@@ -57,12 +59,14 @@ function MacroRow({ label, nutrition, macro, unit = 'g' }) {
 export default function DishDetail() {
   const { dishId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [dish, setDish] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPortionPicker, setShowPortionPicker] = useState(false);
   const [selectedTier, setSelectedTier] = useState('standard');
   const [selectedNutrition, setSelectedNutrition] = useState(null);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
 
   useEffect(() => {
     api.get(`/api/dish/${dishId}`)
@@ -71,7 +75,6 @@ export default function DishDetail() {
       .finally(() => setLoading(false));
   }, [dishId]);
 
-  // Compute displayed nutrition — use selected tier if available, else dish default
   const displayNutrition = selectedNutrition
     ? {
         calories: selectedNutrition.calories_kcal != null ? { min: Math.round(selectedNutrition.calories_kcal * 0.9), max: Math.round(selectedNutrition.calories_kcal * 1.1), avg: selectedNutrition.calories_kcal } : null,
@@ -118,10 +121,7 @@ export default function DishDetail() {
       <main className="pt-16 pb-8 px-4">
         {/* Back + Save */}
         <div className="mt-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-gray-500 text-sm hover:text-green-600 transition-colors"
-          >
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-gray-500 text-sm hover:text-green-600 transition-colors">
             ← Back
           </button>
           <SaveDishButton dishId={dishId} initialSaved={dish.isSaved} />
@@ -144,7 +144,7 @@ export default function DishDetail() {
 
         {/* Price */}
         {dish.estimatedPrice != null && (
-          <p className="text-green-600 font-semibold text-sm mb-3">~${dish.estimatedPrice}</p>
+          <p className="text-green-600 font-semibold text-sm mb-3">~₹{dish.estimatedPrice}</p>
         )}
 
         {/* Tags */}
@@ -154,7 +154,7 @@ export default function DishDetail() {
           </div>
         )}
 
-        {/* Dish description box — culinary description with read more */}
+        {/* Dish description box */}
         {dish.dishDescription && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-2">About this dish</h2>
@@ -162,10 +162,7 @@ export default function DishDetail() {
               {dish.dishDescription}
             </p>
             {dish.dishDescription.length > 160 && (
-              <button
-                onClick={() => setDescExpanded(e => !e)}
-                className="text-xs text-green-600 font-medium mt-1.5"
-              >
+              <button onClick={() => setDescExpanded(e => !e)} className="text-xs text-green-600 font-medium mt-1.5">
                 {descExpanded ? 'Show less ▲' : 'Read more ▼'}
               </button>
             )}
@@ -177,10 +174,7 @@ export default function DishDetail() {
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-gray-700">Nutrition Estimates</h2>
             {hasTiers && (
-              <button
-                onClick={() => setShowPortionPicker(true)}
-                className="flex items-center gap-1 text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full"
-              >
+              <button onClick={() => setShowPortionPicker(true)} className="flex items-center gap-1 text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">
                 <span>⚖️</span>
                 <span>{selectedTier === 'standard' ? 'Standard' : selectedTier === 'small' ? 'Small' : 'Large'}</span>
                 <span className="text-gray-400">▾</span>
@@ -192,9 +186,7 @@ export default function DishDetail() {
           <MacroRow label="Carbs" nutrition={displayNutrition} macro="carbs" />
           <MacroRow label="Fat" nutrition={displayNutrition} macro="fat" />
           {selectedNutrition && (
-            <p className="text-xs text-green-600 mt-2">
-              Showing: {selectedNutrition.label} ({selectedNutrition.weight_grams}g)
-            </p>
+            <p className="text-xs text-green-600 mt-2">Showing: {selectedNutrition.label} ({selectedNutrition.weight_grams}g)</p>
           )}
         </div>
 
@@ -207,9 +199,7 @@ export default function DishDetail() {
           <div className="w-full bg-gray-100 rounded-full h-2">
             <div className={`h-2 rounded-full transition-all ${confColor}`} style={{ width: `${confidence}%` }} />
           </div>
-          {confidence < 40 && (
-            <p className="text-xs text-red-500 mt-2">⚠️ Low confidence estimate</p>
-          )}
+          {confidence < 40 && <p className="text-xs text-red-500 mt-2">⚠️ Low confidence estimate</p>}
         </div>
 
         {/* Recommend / Avoid reasons */}
@@ -220,21 +210,17 @@ export default function DishDetail() {
         )}
         {dish.avoidReasons?.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-            {dish.avoidReasons.map((r, i) => (
-              <p key={i} className="text-red-700 text-sm">❌ {r}</p>
-            ))}
+            {dish.avoidReasons.map((r, i) => <p key={i} className="text-red-700 text-sm">❌ {r}</p>)}
           </div>
         )}
 
-        {/* Allergen flags — prominent warning if present */}
+        {/* Allergen flags */}
         {dish.allergenFlags?.length > 0 && (
           <div className="mb-4 bg-red-50 border-2 border-red-300 rounded-xl p-3">
             <p className="text-red-700 text-sm font-semibold mb-2">⚠️ Contains Allergens</p>
             <div className="flex flex-wrap gap-2 mb-2">
               {dish.allergenFlags.map(flag => (
-                <span key={flag} className="bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-full">
-                  {flag}
-                </span>
+                <span key={flag} className="bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-full">{flag}</span>
               ))}
             </div>
             <p className="text-red-600 text-xs">Always confirm allergen information directly with restaurant staff before ordering.</p>
@@ -248,10 +234,19 @@ export default function DishDetail() {
           </p>
         </div>
 
+        {/* Share Card button */}
+        <button
+          onClick={() => setShowShareCard(true)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold text-sm mt-3 shadow-md active:opacity-90 transition-opacity"
+        >
+          <span>📤</span>
+          <span>Share Nutrition Card</span>
+        </button>
+
         {/* User feedback button */}
         <FeedbackButton dishId={dishId} />
 
-        {/* Restaurant adjustment note — shown when DB data has a multiplier applied */}
+        {/* Restaurant adjustment note */}
         {dish.dataSource === 'database' && dish.multiplierNote && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-2">
             <p className="text-blue-700 text-xs leading-relaxed">
@@ -266,11 +261,18 @@ export default function DishDetail() {
     {showPortionPicker && (
       <PortionPicker
         dish={dish}
-        onSelect={(tier, nutrition) => {
-          setSelectedTier(tier);
-          setSelectedNutrition(nutrition);
-        }}
+        onSelect={(tier, nutrition) => { setSelectedTier(tier); setSelectedNutrition(nutrition); }}
         onClose={() => setShowPortionPicker(false)}
+      />
+    )}
+
+    {/* Share card modal */}
+    {showShareCard && (
+      <ShareCardModal
+        dish={dish}
+        restaurantName={null}
+        goal={user?.profile?.goal || null}
+        onClose={() => setShowShareCard(false)}
       />
     )}
     </>

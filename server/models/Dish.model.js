@@ -52,6 +52,8 @@ const dishSchema = new Schema({
   // Dish-level save — user bookmarks individual dishes
   isSaved: { type: Boolean, default: false },
   savedAt: Date,
+  // Food photo fetched from Unsplash and re-hosted on Cloudinary (CORS-safe for html2canvas)
+  dishImageUrl: { type: String, default: null },
   // All three portion tiers from DB (small/standard/large) — used by UI picker
   portionTiers: {
     small:    { label: String, weight_grams: Number, calories_kcal: Number, protein_g: Number, carbs_g: Number, fat_g: Number },

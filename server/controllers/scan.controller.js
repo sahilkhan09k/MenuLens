@@ -9,6 +9,7 @@ import { processDishNutrition } from '../services/nutrition.service.js';
 import { scoreDish, generateTags, classifyDish, buildRecommendedCombos } from '../services/recommendation.service.js';
 import { lookupFoodItem, getFoodNutrition } from '../services/foodDB.service.js';
 import { findNearestRestaurant } from '../services/places.service.js';
+import { fetchAndUploadDishPhoto } from '../services/dishPhoto.service.js';
 
 function hashBuffer(buffer) {
   return crypto.createHash('md5').update(buffer).digest('hex');
@@ -231,6 +232,16 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
       if (classification === 'recommended') recommendedIds.push(dish._id);
       if (classification === 'good')        goodIds.push(dish._id);
       if (classification === 'avoid')       avoidIds.push(dish._id);
+
+      // Fetch dish photo from Unsplash → re-host on Cloudinary (non-blocking)
+      // Only fetch for recommended/good dishes to save API quota
+      if (classification === 'recommended' || classification === 'good') {
+        fetchAndUploadDishPhoto(rawDish.name).then(photoUrl => {
+          if (photoUrl) {
+            Dish.updateOne({ _id: dish._id }, { $set: { dishImageUrl: photoUrl } }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
 
       // Collect for combo building — include all non-avoided dishes
       if (classification !== 'avoid') {
@@ -463,6 +474,66 @@ export async function deleteScan(req, res) {
     res.json({ message: 'Scan deleted.' });
   } catch (err) {
     console.error('[scan] deleteScan error:', err.message);
+    res.status(500).json({ message: 'Server error.' });
+  }
+}
+
+/**
+ * Get past scans at the same restaurant for the current user.
+ * Used by the Results page to show "You've been here before" context.
+ * Matches by restaurantName (case-insensitive).
+ * Excludes the current scan if scanId is provided.
+ */
+export async function getRestaurantHistory(req, res) {
+  try {
+    const { name, excludeScanId } = req.query;
+    if (!name || !name.trim()) {
+      return res.json({ visits: [], totalVisits: 0 });
+    }
+
+    const query = {
+      userId: req.user.id,
+      status: 'complete',
+      restaurantName: { $regex: new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') },
+    };
+
+    // Exclude the current scan so we don't count it as a "previous" visit
+    if (excludeScanId) {
+      query._id = { $ne: excludeScanId };
+    }
+
+    const totalVisits = await Scan.countDocuments(query);
+
+    // Get the last 3 visits with their dishes
+    const pastScans = await Scan.find(query)
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .populate({
+        path: 'dishes',
+        options: { sort: { matchScore: -1 }, limit: 5 },
+        select: 'name matchScore estimatedNutrition tags cookingMethod',
+      })
+      .select('_id restaurantName createdAt totalDishesFound totalMatchingDishes')
+      .lean();
+
+    res.json({
+      totalVisits,
+      visits: pastScans.map(s => ({
+        _id: s._id,
+        restaurantName: s.restaurantName,
+        date: s.createdAt,
+        totalDishes: s.totalDishesFound,
+        recommendedCount: s.totalMatchingDishes,
+        topDishes: (s.dishes || []).slice(0, 3).map(d => ({
+          _id: d._id,
+          name: d.name,
+          matchScore: d.matchScore,
+          calories: d.estimatedNutrition?.calories?.avg,
+        })),
+      })),
+    });
+  } catch (err) {
+    console.error('[scan] getRestaurantHistory error:', err.message);
     res.status(500).json({ message: 'Server error.' });
   }
 }

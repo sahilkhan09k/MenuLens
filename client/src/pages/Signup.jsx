@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -30,8 +32,10 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      await api.post('/api/auth/signup', form);
-      navigate('/verify-otp', { state: { email: form.email } });
+      const res = await api.post('/api/auth/signup', form);
+      login(res.data.user, res.data.accessToken, res.data.refreshToken);
+      toast.success('Welcome to MenuLens! Let\'s set up your profile.');
+      navigate('/onboarding/gender-age');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Signup failed');
     } finally {

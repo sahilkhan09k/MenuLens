@@ -4,6 +4,9 @@ import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import BottomNav from '../components/BottomNav';
 import DishCard from '../components/DishCard';
+import ShareCardModal from '../components/ShareCard';
+import ShareScanCardModal from '../components/ShareScanCard';
+import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
 const ALL_TAGS = ['High Protein', 'Low Carb', 'Low Calorie', 'High Calorie', 'Healthy Cook', 'Deep Fried', 'Fits Your Goal'];
@@ -86,10 +89,15 @@ function ComboCard({ combo, onDishClick }) {
 export default function Results() {
   const { scanId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [scan, setScan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTag, setActiveTag] = useState('');
+  const [shareDish, setShareDish] = useState(null);
+  const [showScanShare, setShowScanShare] = useState(false);
+  const [restaurantHistory, setRestaurantHistory] = useState(null);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   useEffect(() => {
     api.get(`/api/scan/${scanId}`)
@@ -97,6 +105,20 @@ export default function Results() {
       .catch(() => toast.error('Failed to load results'))
       .finally(() => setLoading(false));
   }, [scanId]);
+
+  // Fetch restaurant visit history once scan is loaded
+  useEffect(() => {
+    if (!scan?.restaurantName) return;
+    api.get('/api/scan/restaurant-history', {
+      params: { name: scan.restaurantName, excludeScanId: scanId },
+    })
+      .then(res => {
+        if (res.data.totalVisits > 0) {
+          setRestaurantHistory(res.data);
+        }
+      })
+      .catch(() => {}); // silent fail — non-critical feature
+  }, [scan?.restaurantName, scanId]);
 
   if (loading) {
     return (
@@ -169,9 +191,18 @@ export default function Results() {
       <main className="pt-16 pb-20 px-4">
         {/* Header */}
         <div className="mt-6 mb-4">
-          <h1 className="text-xl font-bold text-gray-800">
-            {scan.restaurantName || 'Scan Results'}
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold text-gray-800">
+              {scan.restaurantName || 'Scan Results'}
+            </h1>
+            <button
+              onClick={() => setShowScanShare(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 text-green-700 text-xs font-semibold hover:bg-green-100 transition-colors"
+            >
+              <span>📤</span>
+              <span>Share</span>
+            </button>
+          </div>
           <p className="text-gray-400 text-xs mt-0.5">{dishes.length} dishes found · tap 🏷️ to save any dish</p>
         </div>
 
@@ -194,6 +225,62 @@ export default function Results() {
               <p className="text-xs text-blue-700 mt-0.5">{scan.scanQualityNote || 'Nutrition estimates may be less accurate. A clearer photo would improve results.'}</p>
               <button onClick={() => navigate('/scan')} className="text-xs text-blue-700 font-semibold underline mt-1">Try a clearer photo →</button>
             </div>
+          </div>
+        )}
+
+        {/* Restaurant memory — "You've been here before" */}
+        {restaurantHistory && restaurantHistory.totalVisits > 0 && (
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-4">
+            <button
+              onClick={() => setHistoryExpanded(e => !e)}
+              className="w-full flex items-start gap-3 text-left"
+            >
+              <span className="text-xl shrink-0">🔄</span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-purple-800">
+                  You've been to {scan.restaurantName} {restaurantHistory.totalVisits} time{restaurantHistory.totalVisits !== 1 ? 's' : ''} before
+                </p>
+                <p className="text-xs text-purple-600 mt-0.5">
+                  Last visit: {new Date(restaurantHistory.visits[0]?.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              </div>
+              <span className="text-purple-400 text-sm mt-0.5">{historyExpanded ? '▲' : '▼'}</span>
+            </button>
+
+            {historyExpanded && (
+              <div className="mt-3 pt-3 border-t border-purple-200 space-y-3">
+                {restaurantHistory.visits.map(visit => (
+                  <div key={visit._id}>
+                    <p className="text-xs text-purple-500 font-medium mb-1.5">
+                      {new Date(visit.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {visit.totalDishes} dishes · {visit.recommendedCount} recommended
+                    </p>
+                    <div className="space-y-1">
+                      {visit.topDishes.map(d => (
+                        <button
+                          key={d._id}
+                          onClick={() => navigate('/dish/' + d._id)}
+                          className="w-full flex items-center justify-between bg-white/70 rounded-lg px-3 py-2 text-left hover:bg-white transition-colors"
+                        >
+                          <span className="text-sm text-gray-800 truncate flex-1">{d.name}</span>
+                          <div className="flex items-center gap-2 shrink-0 ml-2">
+                            {d.calories && <span className="text-xs text-gray-400">{Math.round(d.calories)} kcal</span>}
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${d.matchScore >= 65 ? 'bg-green-100 text-green-700' : d.matchScore >= 45 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                              {d.matchScore}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => navigate('/history')}
+                  className="w-full text-center text-xs text-purple-600 font-semibold py-1 hover:text-purple-800"
+                >
+                  View full scan history →
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -246,7 +333,7 @@ export default function Results() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredAll.map(dish => <DishCard key={dish._id} dish={dish} />)}
+                {filteredAll.map(dish => <DishCard key={dish._id} dish={dish} onShareClick={setShareDish} />)}
               </div>
             )}
           </section>
@@ -273,10 +360,10 @@ export default function Results() {
                 <div className="space-y-3">
                   {topRec.map(dish => (
                     <div key={dish._id} className="ring-2 ring-green-200 rounded-xl">
-                      <DishCard dish={dish} />
+                      <DishCard dish={dish} onShareClick={setShareDish} />
                     </div>
                   ))}
-                  {moreRec.map(dish => <DishCard key={dish._id} dish={dish} />)}
+                  {moreRec.map(dish => <DishCard key={dish._id} dish={dish} onShareClick={setShareDish} />)}
                 </div>
               </section>
             )}
@@ -286,7 +373,7 @@ export default function Results() {
               <section className="mb-6">
                 <SectionHeader title="👍 Good Choices" count={filteredGood.length} />
                 <div className="space-y-3">
-                  {filteredGood.map(dish => <DishCard key={dish._id} dish={dish} />)}
+                  {filteredGood.map(dish => <DishCard key={dish._id} dish={dish} onShareClick={setShareDish} />)}
                 </div>
               </section>
             )}
@@ -296,7 +383,7 @@ export default function Results() {
               <section className="mb-6">
                 <SectionHeader title="⚠️ Avoid" count={filteredAvoid.length} />
                 <div className="space-y-3">
-                  {filteredAvoid.map(dish => <DishCard key={dish._id} dish={dish} />)}
+                  {filteredAvoid.map(dish => <DishCard key={dish._id} dish={dish} onShareClick={setShareDish} />)}
                 </div>
               </section>
             )}
@@ -306,7 +393,7 @@ export default function Results() {
               <section className="mb-6">
                 <SectionHeader title="🍽️ Other Dishes" count={filteredRest.length} />
                 <div className="space-y-3">
-                  {filteredRest.map(dish => <DishCard key={dish._id} dish={dish} />)}
+                  {filteredRest.map(dish => <DishCard key={dish._id} dish={dish} onShareClick={setShareDish} />)}
                 </div>
               </section>
             )}
@@ -323,6 +410,26 @@ export default function Results() {
         </p>
       </main>
       <BottomNav />
+
+      {/* Share individual dish modal */}
+      {shareDish && (
+        <ShareCardModal
+          dish={shareDish}
+          restaurantName={scan.restaurantName || null}
+          goal={user?.profile?.goal || null}
+          onClose={() => setShareDish(null)}
+        />
+      )}
+
+      {/* Share scan summary modal */}
+      {showScanShare && (
+        <ShareScanCardModal
+          scan={scan}
+          dishes={dishes}
+          restaurantName={scan.restaurantName}
+          onClose={() => setShowScanShare(false)}
+        />
+      )}
     </div>
   );
 }

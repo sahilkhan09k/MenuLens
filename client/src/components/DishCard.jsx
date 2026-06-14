@@ -6,7 +6,7 @@ import NutritionPill from './NutritionPill';
 import { formatCalories } from '../utils/helpers';
 import api from '../utils/api';
 
-export default function DishCard({ dish, onSaveToggle }) {
+export default function DishCard({ dish, onSaveToggle, onShareClick }) {
   const navigate = useNavigate();
   const [isSaved, setIsSaved] = useState(dish.isSaved || false);
   const [saving, setSaving] = useState(false);
@@ -34,17 +34,33 @@ export default function DishCard({ dish, onSaveToggle }) {
     }
   };
 
+  const handleShare = (e) => {
+    e.stopPropagation();
+    onShareClick?.(dish);
+  };
+
   return (
     <div onClick={() => navigate(`/dish/${dish._id}`)} className="bg-white rounded-xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow border border-gray-100 relative">
-      {/* Bookmark button */}
-      <button
-        onClick={handleSaveToggle}
-        disabled={saving}
-        className="absolute top-3 right-3 text-lg transition-transform active:scale-90 disabled:opacity-50"
-        title={isSaved ? 'Unsave' : 'Save'}
-      >
-        {isSaved ? '🔖' : '🏷️'}
-      </button>
+      {/* Bookmark + Share buttons */}
+      <div className="absolute top-3 right-3 flex items-center gap-1.5">
+        {onShareClick && (
+          <button
+            onClick={handleShare}
+            className="text-lg transition-transform active:scale-90 hover:scale-110"
+            title="Share"
+          >
+            📤
+          </button>
+        )}
+        <button
+          onClick={handleSaveToggle}
+          disabled={saving}
+          className="text-lg transition-transform active:scale-90 disabled:opacity-50"
+          title={isSaved ? 'Unsave' : 'Save'}
+        >
+          {isSaved ? '🔖' : '🏷️'}
+        </button>
+      </div>
 
       <div className="flex items-start justify-between mb-2 pr-8">
         <h3 className="font-semibold text-gray-800 flex-1">{dish.name}</h3>
