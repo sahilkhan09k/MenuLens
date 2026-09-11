@@ -2,8 +2,8 @@ import Groq from 'groq-sdk';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
-const TEXT_MODEL   = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const VISION_MODEL = 'qwen/qwen3.6-27b';
+const TEXT_MODEL   = 'openai/gpt-oss-20b';
 
 // Strip markdown code fences that Groq sometimes wraps around JSON
 function stripMarkdown(raw) {
