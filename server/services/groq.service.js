@@ -236,60 +236,34 @@ export async function extractDishes(imageUrls) {
 
 // ── Step 2: Batch nutrition estimation ───────────────────────────────────────
 
-// Process a single sub-batch of dishes (max 5 at a time to avoid token truncation)
+// Process a single sub-batch of dishes (up to 8 at a time)
 async function callNutritionBatch(batch) {
   const dishList = batch
-    .map((d, i) => (i + 1) + '. Name: "' + d.name + '" | Description: "' + (d.description || 'none') + '"')
+    .map((d, i) => (i + 1) + '. "' + d.name + '"' + (d.description ? ' (' + d.description + ')' : ''))
     .join('\n');
 
   const prompt = [
-    'You are a precise nutritionist AI with expert knowledge of all restaurant food and beverages.',
+    'You are a nutritionist AI. For each menu item below, return accurate nutritional estimates.',
     '',
-    'Below is a list of menu items. For EACH item, provide accurate nutritional estimates.',
+    'ITEMS:\n' + dishList,
     '',
-    'MENU ITEMS:',
-    dishList,
+    'RULES:',
+    '- BEVERAGES: calories 0-150, protein ~0g, fat ~0g, cookingMethod="raw"',
+    '- FRIED items: higher fat, cookingMethod="fried"',
+    '- GRILLED meat/fish: high protein 20-40g, cookingMethod="grilled"',
+    '- confidence: integer 0-100',
     '',
-    'CRITICAL RULES you MUST follow:',
-    '- BEVERAGES (coffee, tea, juice, soda, water, smoothie, latte, cappuccino, americano, espresso):',
-    '  -> calories 0-150 max for plain drinks, protein ~0g, fat ~0g, cookingMethod = "raw"',
-    '- DESSERTS (cake, ice cream, brownie, cookie, pastry):',
-    '  -> high carbs, low protein, cookingMethod = "baked" or "raw"',
-    '- SALADS: low calories, low fat unless dressing-heavy, cookingMethod = "raw"',
-    '- GRILLED MEAT/FISH: high protein (20-40g), moderate fat, cookingMethod = "grilled"',
-    '- FRIED ITEMS: higher fat, cookingMethod = "fried"',
-    '- Never assign food macros to beverages or beverage macros to food',
-    '- estimatedIngredients must list REAL ingredients',
-    '- confidence: integer 0-100, be honest, set below 50 if uncertain',
-    '',
-    'Return ONLY a raw JSON array (no markdown, no code fences, no explanation) with exactly ' + batch.length + ' objects in the same order as the input list:',
-    '[',
-    '  {',
-    '    "name": "exact dish name from input",',
-    '    "calories": {"min": number, "max": number},',
-    '    "protein": {"min": number, "max": number},',
-    '    "carbs": {"min": number, "max": number},',
-    '    "fat": {"min": number, "max": number},',
-    '    "cookingMethod": "grilled" | "fried" | "steamed" | "baked" | "raw" | "unknown",',
-    '    "estimatedIngredients": ["ingredient1", "ingredient2"],',
-    '    "dishDescription": "4-6 sentences covering key ingredients, preparation, flavour profile and cultural origin.",',
-    '    "confidence": integer 0-100,',
-    '    "recommendReason": "one honest sentence about a nutritional positive",',
-    '    "avoidReasons": ["concern1"] or []',
-    '  }',
-    ']',
+    'Return ONLY a minified JSON array with exactly ' + batch.length + ' objects (same order as input):',
+    '[{"name":"...","calories":{"min":0,"max":0},"protein":{"min":0,"max":0},"carbs":{"min":0,"max":0},"fat":{"min":0,"max":0},"cookingMethod":"grilled|fried|steamed|baked|raw|unknown","estimatedIngredients":["..."],"dishDescription":"2-3 sentences on ingredients and taste.","confidence":80,"recommendReason":"...","avoidReasons":[]}]',
   ].join('\n');
 
   const response = await groq.chat.completions.create({
     model: TEXT_MODEL,
     messages: [
-      {
-        role: 'system',
-        content: 'You are a precise nutritionist. Give accurate, realistic nutritional data for every menu item. Beverages like Americano have ~5-15 kcal and ~0g protein. Never confuse beverages with food.',
-      },
+      { role: 'system', content: 'Nutritionist AI. Return ONLY minified JSON, no markdown, no extra text.' },
       { role: 'user', content: prompt },
     ],
-    max_tokens: 8192,
+    max_tokens: 6000,
     temperature: 0.1,
   });
 
@@ -315,7 +289,6 @@ async function callNutritionBatch(batch) {
     const item = parsed[i] || null;
     if (item) {
       item.source = 'ai';
-      // Normalise confidence: if model returns 0-1 decimal, convert to 0-100
       if (typeof item.confidence === 'number' && item.confidence <= 1) {
         item.confidence = Math.round(item.confidence * 100);
       }
@@ -327,25 +300,25 @@ async function callNutritionBatch(batch) {
 export async function estimateNutritionBatch(dishes) {
   if (!dishes || dishes.length === 0) return [];
 
-  // Process in sub-batches of 5 to stay well within token limits
-  const NUTRITION_BATCH_SIZE = 5;
-  const allResults = [];
-
+  // Split into sub-batches of 8 and run ALL batches in parallel
+  const NUTRITION_BATCH_SIZE = 8;
+  const batches = [];
   for (let i = 0; i < dishes.length; i += NUTRITION_BATCH_SIZE) {
-    const batch = dishes.slice(i, i + NUTRITION_BATCH_SIZE);
-    const batchNum = Math.floor(i / NUTRITION_BATCH_SIZE) + 1;
-    const totalBatches = Math.ceil(dishes.length / NUTRITION_BATCH_SIZE);
-    console.log('[groq.service] Nutrition batch ' + batchNum + '/' + totalBatches + ' (' + batch.length + ' dishes)');
-
-    try {
-      const results = await callNutritionBatch(batch);
-      allResults.push(...results);
-    } catch (err) {
-      console.error('[groq.service] Nutrition batch ' + batchNum + ' failed:', err.status || '', err.message);
-      // Fill failed batch slots with null so indices stay aligned
-      allResults.push(...batch.map(() => null));
-    }
+    batches.push(dishes.slice(i, i + NUTRITION_BATCH_SIZE));
   }
 
-  return allResults;
+  console.log('[groq.service] Running ' + batches.length + ' nutrition batch(es) in parallel (' + dishes.length + ' dishes total)');
+
+  const batchResults = await Promise.all(
+    batches.map(async (batch, idx) => {
+      try {
+        return await callNutritionBatch(batch);
+      } catch (err) {
+        console.error('[groq.service] Nutrition batch ' + (idx + 1) + ' failed:', err.status || '', err.message);
+        return batch.map(() => null);
+      }
+    })
+  );
+
+  return batchResults.flat();
 }

@@ -142,6 +142,8 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
     const avoidIds = [];
     const savedDishObjects = []; // for combo building
 
+    // ── Build all dish payloads in memory (no DB yet) ────────────────────────
+    const dishPayloads = [];
     for (let i = 0; i < uniqueDishes.length; i++) {
       const rawDish = uniqueDishes[i];
       const dbItem = dbResults[i];
@@ -166,7 +168,7 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
           recommendReason: '',
           avoidReasons: [],
           estimatedIngredients: [],
-          dishDescription: dbItem.description || '',  // from FoodItem DB
+          dishDescription: dbItem.description || '',
           multiplierNote: dbNutrition.multiplierNote || null,
           portionTiers: dbNutrition.portionTiers ? {
             small:    dbNutrition.portionTiers.small    ? { label: dbNutrition.portionTiers.small.label,    weight_grams: dbNutrition.portionTiers.small.weight_grams,    calories_kcal: dbNutrition.portionTiers.small.calories_kcal,    protein_g: dbNutrition.portionTiers.small.protein_g,    carbs_g: dbNutrition.portionTiers.small.carbs_g,    fat_g: dbNutrition.portionTiers.small.fat_g    } : null,
@@ -194,18 +196,23 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
         continue;
       }
 
-      const dishPayload = {
+      const merged = {
         ...rawDish,
         ...nutritionData,
         cookingMethod: normalizeCookingMethod(nutritionData.cookingMethod),
         estimatedIngredients: nutritionData.estimatedIngredients,
       };
 
-      const matchScore = scoreDish(dishPayload, userProfile);
-      const tags = generateTags(dishPayload, matchScore);
-      const classification = classifyDish({ ...dishPayload, matchScore }, userProfile);
+      const matchScore = scoreDish(merged, userProfile);
+      const tags = generateTags(merged, matchScore);
+      const classification = classifyDish({ ...merged, matchScore }, userProfile);
 
-      const dish = await Dish.create({
+      dishPayloads.push({ rawDish, nutritionData, merged, matchScore, tags, classification, dataSource });
+    }
+
+    // ── Insert all dishes in one batch ───────────────────────────────────────
+    const insertedDishes = await Dish.insertMany(
+      dishPayloads.map(({ rawDish, nutritionData, matchScore, tags, dataSource }) => ({
         scanId: scan._id,
         name: rawDish.name,
         description: rawDish.description || '',
@@ -216,39 +223,42 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
         cookingMethod: normalizeCookingMethod(nutritionData.cookingMethod),
         matchScore,
         tags,
-        allergenFlags: dishPayload.allergenFlags || [],
+        allergenFlags: nutritionData.allergenFlags || [],
         recommendReason: nutritionData.recommendReason || '',
         avoidReasons: [
           ...(nutritionData.avoidReasons || []),
-          ...(dishPayload._conditionReasons || []),
+          ...(nutritionData._conditionReasons || []),
         ],
         dataSource,
         multiplierNote: nutritionData.multiplierNote || null,
         portionTiers: nutritionData.portionTiers || null,
-        scoreBreakdown: dishPayload.scoreBreakdown || null,
-      });
+        scoreBreakdown: nutritionData.scoreBreakdown || null,
+      }))
+    );
+
+    // ── Categorize inserted dishes and kick off non-blocking side effects ────
+    for (let i = 0; i < insertedDishes.length; i++) {
+      const dish = insertedDishes[i];
+      const { rawDish, nutritionData, matchScore, tags, classification, dataSource } = dishPayloads[i];
 
       dishIds.push(dish._id);
       if (classification === 'recommended') recommendedIds.push(dish._id);
       if (classification === 'good')        goodIds.push(dish._id);
       if (classification === 'avoid')       avoidIds.push(dish._id);
 
-      // Fetch dish photo from Unsplash → re-host on Cloudinary (non-blocking)
-      // Only fetch for recommended/good dishes to save API quota
+      // Fetch dish photo non-blocking (fire & forget)
       if (classification === 'recommended' || classification === 'good') {
         fetchAndUploadDishPhoto(rawDish.name).then(photoUrl => {
-          if (photoUrl) {
-            Dish.updateOne({ _id: dish._id }, { $set: { dishImageUrl: photoUrl } }).catch(() => {});
-          }
+          if (photoUrl) Dish.updateOne({ _id: dish._id }, { $set: { dishImageUrl: photoUrl } }).catch(() => {});
         }).catch(() => {});
       }
 
-      // Collect for combo building — include all non-avoided dishes
+      // Collect for combo building
       if (classification !== 'avoid') {
         savedDishObjects.push({
           _id: dish._id,
           name: dish.name,
-          category: rawDish.category || 'other',  // LLM-provided category
+          category: rawDish.category || 'other',
           matchScore,
           tags,
           cookingMethod: dish.cookingMethod,
@@ -256,52 +266,45 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
         });
       }
 
+      // Review queue updates — fire all in parallel, non-blocking
       if (dataSource === 'ai') {
-        try {
-          const confidence = nutritionData.confidenceScore || 0;
-          const priority = 3 + (confidence < 70 ? 10 : 0);
-          const escapedName = escapeRegex(rawDish.name);
-
-          const existing = await FoodReviewQueue.findOne({
-            dish_name: { $regex: new RegExp('^' + escapedName + '$', 'i') },
-            entry_type: 'ai_sourced',
-            status: 'pending',
-          });
-
+        const confidence = nutritionData.confidenceScore || 0;
+        const priority = 3 + (confidence < 70 ? 10 : 0);
+        const escapedName = escapeRegex(rawDish.name);
+        FoodReviewQueue.findOne({
+          dish_name: { $regex: new RegExp('^' + escapedName + '$', 'i') },
+          entry_type: 'ai_sourced',
+          status: 'pending',
+        }).then(existing => {
           if (existing) {
             existing.scan_count += 1;
             existing.priority_score = (existing.scan_count * 3) + (confidence < 70 ? 10 : 0);
             existing.last_seen_at = new Date();
-            await existing.save();
-            console.log('[pipeline] Review queue: incremented count for "' + rawDish.name + '" (count=' + existing.scan_count + ')');
-          } else {
-            await FoodReviewQueue.create({
-              entry_type: 'ai_sourced',
-              dish_name: rawDish.name,
-              raw_name: rawDish.raw_name || rawDish.name,
-              scan_count: 1,
-              ai_nutrition: {
-                calories_min: nutritionData.estimatedNutrition?.calories?.min,
-                calories_max: nutritionData.estimatedNutrition?.calories?.max,
-                protein_min:  nutritionData.estimatedNutrition?.protein?.min,
-                protein_max:  nutritionData.estimatedNutrition?.protein?.max,
-                carbs_min:    nutritionData.estimatedNutrition?.carbs?.min,
-                carbs_max:    nutritionData.estimatedNutrition?.carbs?.max,
-                fat_min:      nutritionData.estimatedNutrition?.fat?.min,
-                fat_max:      nutritionData.estimatedNutrition?.fat?.max,
-                cooking_method: nutritionData.cookingMethod,
-                estimated_ingredients: nutritionData.estimatedIngredients || [],
-                confidence,
-                recommend_reason: nutritionData.recommendReason || '',
-                avoid_reasons: nutritionData.avoidReasons || [],
-              },
-              priority_score: priority,
-            });
-            console.log('[pipeline] Review queue: added "' + rawDish.name + '"');
+            return existing.save();
           }
-        } catch (qErr) {
-          console.warn('[pipeline] Could not log to review queue:', qErr.message);
-        }
+          return FoodReviewQueue.create({
+            entry_type: 'ai_sourced',
+            dish_name: rawDish.name,
+            raw_name: rawDish.raw_name || rawDish.name,
+            scan_count: 1,
+            ai_nutrition: {
+              calories_min: nutritionData.estimatedNutrition?.calories?.min,
+              calories_max: nutritionData.estimatedNutrition?.calories?.max,
+              protein_min:  nutritionData.estimatedNutrition?.protein?.min,
+              protein_max:  nutritionData.estimatedNutrition?.protein?.max,
+              carbs_min:    nutritionData.estimatedNutrition?.carbs?.min,
+              carbs_max:    nutritionData.estimatedNutrition?.carbs?.max,
+              fat_min:      nutritionData.estimatedNutrition?.fat?.min,
+              fat_max:      nutritionData.estimatedNutrition?.fat?.max,
+              cooking_method: nutritionData.cookingMethod,
+              estimated_ingredients: nutritionData.estimatedIngredients || [],
+              confidence,
+              recommend_reason: nutritionData.recommendReason || '',
+              avoid_reasons: nutritionData.avoidReasons || [],
+            },
+            priority_score: priority,
+          });
+        }).catch(qErr => console.warn('[pipeline] Could not log to review queue:', qErr.message));
       }
     }
 
@@ -321,10 +324,9 @@ async function runAIPipeline(scan, cloudinaryUrls, userProfile) {
     scan.recommendedCombos = recommendedCombos;
 
     if (scan.scanQuality !== 'partial') {
-      const allDishes = await Dish.find({ scanId: scan._id }).select('confidenceScore dataSource');
-      const aiOnlyDishes = allDishes.filter(d => d.dataSource === 'ai');
-      if (aiOnlyDishes.length > 0) {
-        const avgConfidence = aiOnlyDishes.reduce((sum, d) => sum + (d.confidenceScore || 0), 0) / aiOnlyDishes.length;
+      const aiOnlyPayloads = dishPayloads.filter(p => p.dataSource === 'ai');
+      if (aiOnlyPayloads.length > 0) {
+        const avgConfidence = aiOnlyPayloads.reduce((sum, p) => sum + (p.nutritionData.confidenceScore || 0), 0) / aiOnlyPayloads.length;
         if (avgConfidence < LOW_CONFIDENCE_THRESHOLD) {
           scan.scanQuality = 'low_confidence';
           scan.scanQualityNote = 'Average AI confidence is ' + Math.round(avgConfidence) + '%. Results may be inaccurate — try a clearer photo.';
