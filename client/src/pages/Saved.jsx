@@ -65,8 +65,10 @@ export default function Saved() {
                 <DishCard dish={dish} />
                 {dish.scanId && (
                   <div className="mt-1 px-4 flex items-center gap-2 text-xs text-gray-400">
-                    {dish.scanId.restaurantName && <span>{dish.scanId.restaurantName}</span>}
-                    {dish.scanId.restaurantName && <span>·</span>}
+                    {(dish.restaurantName || dish.scanId.restaurantName) && (
+                      <span>{dish.restaurantName || dish.scanId.restaurantName}</span>
+                    )}
+                    {(dish.restaurantName || dish.scanId.restaurantName) && <span>·</span>}
                     <span>{formatDate(dish.savedAt || dish.scanId.createdAt)}</span>
                   </div>
                 )}

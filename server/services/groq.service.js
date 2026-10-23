@@ -2,8 +2,8 @@ import Groq from 'groq-sdk';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const VISION_MODEL = 'qwen/qwen3.6-27b';
-const TEXT_MODEL   = 'openai/gpt-oss-20b';
+const VISION_MODEL = 'qwen/qwen3.8-27b';   // Groq vision model available on this account
+const TEXT_MODEL   = 'openai/gpt-oss-20b'; // Text-only model for nutrition estimation
 
 // Strip markdown code fences that Groq sometimes wraps around JSON
 function stripMarkdown(raw) {
@@ -49,57 +49,24 @@ function repairAndParseArray(raw) {
 // ── Step 1: Extract dishes from menu image ────────────────────────────────────
 
 async function callExtractDishes(imageUrl) {
+  // IMPORTANT: Free tier OTPM limit for qwen/qwen3.8-27b is ~1000 tokens.
+  // Use a compact prompt and instruct the model to return minified JSON so we
+  // fit as many dishes as possible within that budget.
   const prompt = [
-    'You are an expert Indian restaurant menu parser with deep knowledge of Indian cuisine.',
+    'You are a menu parser. Extract ALL food/beverage items visible in this menu image.',
     '',
-    'Look at this menu image and extract two things:',
+    'RULES:',
+    '- Only extract items actually printed on the menu. Never invent dishes.',
+    '- Normalize dish names to standard English (fix OCR errors, expand abbreviations, translate regional names).',
+    '- Skip placeholder text like "Food Item Here".',
+    '- Classify category from section headers: starter|main|dessert|beverage|bread|rice|salad|other',
+    '- Price: plain number or null. Use FULL price if half/full shown.',
     '',
-    '1. RESTAURANT INFO (if visible on the menu):',
-    '   - Restaurant name (usually at the top of the menu)',
-    '   - Address (if printed on the menu)',
-    '   If not visible, use null for both.',
+    'Return ONLY minified JSON (no whitespace, no newlines, no markdown):',
+    '{"n":"restaurant name or null","d":[{"nm":"dish name","rn":"raw text","c":"category","p":price_or_null}]}',
     '',
-    '2. ALL FOOD AND BEVERAGE ITEMS visible in the menu.',
-    '',
-    'STRICT RULES:',
-    '- ONLY extract items that are ACTUALLY VISIBLE in the image. Do NOT invent or hallucinate dishes.',
-    '- If a dish name is partially cut off or unclear, use the raw text as-is — do not guess.',
-    '- Do NOT add dishes you expect to see on an Indian menu — only what is printed here.',
-    '',
-    'For each dish item, return:',
-    '- "name": the NORMALIZED canonical English name of the dish',
-    '  * Fix OCR errors (e.g. "Btr Chkn" -> "Butter Chicken")',
-    '  * Expand abbreviations (e.g. "Chx Tikka" -> "Chicken Tikka")',
-    '  * Translate Hindi/regional names to standard English (e.g. "Murgh Makhani" -> "Butter Chicken")',
-    '  * Keep unique/regional names as-is if you cannot confidently normalize them',
-    '- "raw_name": the exact text as written on the menu (preserve original spelling exactly)',
-    '- "category": the meal category of this dish — use the section header it appears under on the menu',
-    '  * Must be one of: "starter", "main", "dessert", "beverage", "bread", "rice", "salad", "other"',
-    '  * If no section header is visible, use your knowledge of Indian cuisine to classify',
-    '  * Examples: soups → "starter", biryani → "main", lassi → "beverage", gulab jamun → "dessert"',
-    '- "description": any description visible on the menu, else empty string',
-    '- "price": price as a number if visible, else null',
-    '  * If the menu shows HALF and FULL prices, use the FULL price as the number',
-    '  * If only HALF price is visible, use that number',
-    '  * Always return a plain number, never an object',
-    '  * Examples: "Rs. 180" → 180, "HALF: Rs.140 FULL: Rs.230" → 230, "₹250" → 250',
-    '',
-    'Return ONLY a raw JSON object (no markdown, no code fences, no explanation):',
-    '{',
-    '  "restaurant_name": "name from menu or null",',
-    '  "restaurant_address": "address from menu or null",',
-    '  "dishes": [',
-    '    {',
-    '      "name": "normalized canonical dish name",',
-    '      "raw_name": "exact text from menu",',
-    '      "category": "starter" | "main" | "dessert" | "beverage" | "bread" | "rice" | "salad" | "other",',
-    '      "description": "description or empty string",',
-    '      "price": number or null',
-    '    }',
-    '  ]',
-    '}',
-    '',
-    'If you cannot read the menu clearly, return { "restaurant_name": null, "restaurant_address": null, "dishes": [] }',
+    'Use short keys to save space: n=restaurant_name, d=dishes array, nm=name, rn=raw_name, c=category, p=price.',
+    'If menu is unreadable or has no real dishes: {"n":null,"d":[]}',
   ].join('\n');
 
   const response = await groq.chat.completions.create({
@@ -107,7 +74,7 @@ async function callExtractDishes(imageUrl) {
     messages: [
       {
         role: 'system',
-        content: 'You are an expert Indian cuisine menu parser. You know all Indian dishes, their Hindi names, common abbreviations, and OCR corruption patterns. Always normalize dish names to standard English canonical forms. Never invent dishes not visible in the image.',
+        content: 'You are a compact menu parser. Return ONLY minified JSON using short keys as instructed. No thinking, no explanation.',
       },
       {
         role: 'user',
@@ -117,61 +84,109 @@ async function callExtractDishes(imageUrl) {
         ],
       },
     ],
-    max_tokens: 4096,
+    max_tokens: 900,   // Stay under free-tier OTPM limit of 1000 for qwen/qwen3.8-27b
     temperature: 0.1,
   });
 
+  const finishReason = response.choices[0]?.finish_reason;
   const raw = stripMarkdown(response.choices[0]?.message?.content || '');
+
+  if (finishReason === 'length') {
+    console.warn('[groq.service] extractDishes: response hit token limit — partial extraction for', imageUrl);
+  }
+
   try {
-    // Try parsing as the new object format first
     let parsed;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      // Fallback: try repair
-      const objects = repairAndParseArray(raw);
-      parsed = objects.length > 0 ? objects[0] : null;
+      // Truncated — recover whatever complete dish objects exist
+      parsed = recoverTruncatedMenuResponse(raw);
     }
 
-    // Handle new format { restaurant_name, restaurant_address, dishes: [...] }
-    if (parsed && Array.isArray(parsed.dishes)) {
+    // Handle compact format { n, d: [...] }
+    if (parsed && Array.isArray(parsed.d)) {
       return {
-        restaurant_name: parsed.restaurant_name || null,
-        restaurant_address: parsed.restaurant_address || null,
-        dishes: parsed.dishes
-          .filter(item => item && (item.name || item.raw_name))
-          .map(item => ({
-            name:        item.name        || item.raw_name || '',
-            raw_name:    item.raw_name    || item.name     || '',
-            category:    item.category    || 'other',
-            description: item.description || '',
-            price:       item.price       ?? null,
-          })),
+        restaurant_name: parsed.n || null,
+        restaurant_address: null,
+        dishes: normalizeDishes(parsed.d, /* compact */ true),
       };
     }
 
-    // Handle old format (plain array) for backward compatibility
+    // Handle full format { restaurant_name, restaurant_address, dishes: [...] }
+    if (parsed && Array.isArray(parsed.dishes)) {
+      return {
+        restaurant_name: parsed.restaurant_name || parsed.n || null,
+        restaurant_address: parsed.restaurant_address || null,
+        dishes: normalizeDishes(parsed.dishes, false),
+      };
+    }
+
+    // Handle plain array format (backward compat)
     if (Array.isArray(parsed)) {
       return {
         restaurant_name: null,
         restaurant_address: null,
-        dishes: parsed
-          .filter(item => item && (item.name || item.raw_name))
-          .map(item => ({
-            name:        item.name        || item.raw_name || '',
-            raw_name:    item.raw_name    || item.name     || '',
-            category:    item.category    || 'other',
-            description: item.description || '',
-            price:       item.price       ?? null,
-          })),
+        dishes: normalizeDishes(parsed, false),
       };
     }
 
+    console.warn('[groq.service] extractDishes: could not parse response. Raw (first 300):', raw.slice(0, 300));
     return { restaurant_name: null, restaurant_address: null, dishes: [] };
-  } catch {
-    console.error('[groq.service] extractDishes: invalid JSON for', imageUrl, '\nRaw:', raw);
+  } catch (err) {
+    console.error('[groq.service] extractDishes: unexpected error for', imageUrl, err.message);
     return { restaurant_name: null, restaurant_address: null, dishes: [] };
   }
+}
+
+// Normalise dishes array — handles both compact {nm,rn,c,p} and full {name,raw_name,category,price} shapes
+function normalizeDishes(items, compact = false) {
+  return items
+    .filter(item => {
+      if (!item) return false;
+      const name = compact
+        ? (item.nm || item.name || item.raw_name || '').trim()
+        : (item.name || item.raw_name || '').trim();
+      if (!name || name.length < 2) return false;
+      const lower = name.toLowerCase();
+      if (lower.includes('food item here') || lower.includes('item here') || lower === 'tbd') return false;
+      return true;
+    })
+    .map(item => ({
+      name:        (compact ? (item.nm || item.name || item.rn || '') : (item.name || item.raw_name || '')).trim(),
+      raw_name:    (compact ? (item.rn || item.nm || item.raw_name || '') : (item.raw_name || item.name || '')).trim(),
+      category:    (compact ? (item.c  || item.category || 'other') : (item.category || 'other')),
+      description: item.description || item.desc || '',
+      price:       (compact ? (item.p  ?? item.price  ?? null) : (item.price ?? null)),
+    }));
+}
+
+// When the JSON is truncated, extract all complete dish objects from the partial response
+function recoverTruncatedMenuResponse(raw) {
+  let restaurant_name = null;
+
+  // Try to find restaurant name in partial JSON
+  const nameMatch = raw.match(/"n"\s*:\s*"([^"]+)"/) || raw.match(/"restaurant_name"\s*:\s*"([^"]+)"/);
+  if (nameMatch) restaurant_name = nameMatch[1];
+
+  // Extract all complete {...} objects using brace matching
+  const allObjects = repairAndParseArray(raw);
+
+  // Filter to only dish-shaped objects (compact or full format)
+  const dishObjects = allObjects.filter(obj =>
+    obj && typeof obj === 'object' &&
+    (obj.nm || obj.name || obj.raw_name) &&
+    !('d' in obj) && !('dishes' in obj) && !('restaurant_name' in obj)
+  );
+
+  if (dishObjects.length > 0) {
+    console.log('[groq.service] extractDishes: recovered ' + dishObjects.length + ' dishes from truncated response');
+    // Detect format from first object
+    const isCompact = 'nm' in dishObjects[0] || 'rn' in dishObjects[0];
+    return { n: restaurant_name, d: dishObjects, _compact: isCompact };
+  }
+
+  return { n: restaurant_name, d: [] };
 }
 
 export async function extractDishes(imageUrls) {
@@ -188,15 +203,16 @@ export async function extractDishes(imageUrls) {
 
     const batchResults = await Promise.all(
       batch.map(async (imageUrl) => {
+        console.log('[groq.service] Calling vision model for URL:', imageUrl);
         try {
           return await callExtractDishes(imageUrl);
         } catch (err) {
-          console.error('[groq.service] extractDishes: first attempt failed, retrying in 2s...', err.message);
+          console.error('[groq.service] extractDishes: first attempt failed, retrying in 2s...', err.status || '', err.message);
           await new Promise((resolve) => setTimeout(resolve, 2000));
           try {
             return await callExtractDishes(imageUrl);
           } catch (retryErr) {
-            console.error('[groq.service] extractDishes: second attempt failed, skipping image.', retryErr.message);
+            console.error('[groq.service] extractDishes: second attempt failed, skipping image.', retryErr.status || '', retryErr.message);
             return { restaurant_name: null, restaurant_address: null, dishes: [] };
           }
         }
@@ -220,10 +236,9 @@ export async function extractDishes(imageUrls) {
 
 // ── Step 2: Batch nutrition estimation ───────────────────────────────────────
 
-export async function estimateNutritionBatch(dishes) {
-  if (!dishes || dishes.length === 0) return [];
-
-  const dishList = dishes
+// Process a single sub-batch of dishes (max 5 at a time to avoid token truncation)
+async function callNutritionBatch(batch) {
+  const dishList = batch
     .map((d, i) => (i + 1) + '. Name: "' + d.name + '" | Description: "' + (d.description || 'none') + '"')
     .join('\n');
 
@@ -245,9 +260,9 @@ export async function estimateNutritionBatch(dishes) {
     '- FRIED ITEMS: higher fat, cookingMethod = "fried"',
     '- Never assign food macros to beverages or beverage macros to food',
     '- estimatedIngredients must list REAL ingredients',
-    '- confidence: be honest, set below 50 if uncertain',
+    '- confidence: integer 0-100, be honest, set below 50 if uncertain',
     '',
-    'Return ONLY a raw JSON array (no markdown, no code fences, no explanation) with exactly ' + dishes.length + ' objects in the same order as the input list:',
+    'Return ONLY a raw JSON array (no markdown, no code fences, no explanation) with exactly ' + batch.length + ' objects in the same order as the input list:',
     '[',
     '  {',
     '    "name": "exact dish name from input",',
@@ -257,44 +272,80 @@ export async function estimateNutritionBatch(dishes) {
     '    "fat": {"min": number, "max": number},',
     '    "cookingMethod": "grilled" | "fried" | "steamed" | "baked" | "raw" | "unknown",',
     '    "estimatedIngredients": ["ingredient1", "ingredient2"],',
-    '    "dishDescription": "Rich description covering: (1) key ingredients and how the dish is prepared, (2) flavour profile — taste, texture, spice level, (3) cultural/regional origin and significance. Aim for 4-6 sentences. Write for someone unfamiliar with Indian cuisine.",',
-    '    "confidence": number 0-100,',
+    '    "dishDescription": "4-6 sentences covering key ingredients, preparation, flavour profile and cultural origin.",',
+    '    "confidence": integer 0-100,',
     '    "recommendReason": "one honest sentence about a nutritional positive",',
     '    "avoidReasons": ["concern1"] or []',
     '  }',
     ']',
   ].join('\n');
 
-  let raw = '';
-  try {
-    const response = await groq.chat.completions.create({
-      model: TEXT_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a precise nutritionist. Give accurate, realistic nutritional data for every menu item. Beverages like Americano have ~5-15 kcal and ~0g protein. Never confuse beverages with food.',
-        },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: 4096,
-      temperature: 0.1,
-    });
+  const response = await groq.chat.completions.create({
+    model: TEXT_MODEL,
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a precise nutritionist. Give accurate, realistic nutritional data for every menu item. Beverages like Americano have ~5-15 kcal and ~0g protein. Never confuse beverages with food.',
+      },
+      { role: 'user', content: prompt },
+    ],
+    max_tokens: 8192,
+    temperature: 0.1,
+  });
 
-    raw = stripMarkdown(response.choices[0]?.message?.content || '');
-    const parsed = repairAndParseArray(raw);
+  const finishReason = response.choices[0]?.finish_reason;
+  const raw = stripMarkdown(response.choices[0]?.message?.content || '');
 
-    if (!Array.isArray(parsed)) {
-      console.error('[groq.service] estimateNutritionBatch: response is not an array\nRaw:', raw);
-      return dishes.map(() => null);
-    }
-
-    return dishes.map((dish, i) => {
-      const item = parsed[i] || null;
-      if (item) item.source = 'ai';
-      return item;
-    });
-  } catch (err) {
-    console.error('[groq.service] estimateNutritionBatch: failed\nRaw:', raw, '\nError:', err.message);
-    return dishes.map(() => null);
+  if (finishReason === 'length') {
+    console.warn('[groq.service] estimateNutritionBatch: response truncated (finish_reason=length). Parsed partial results.');
   }
+
+  const parsed = repairAndParseArray(raw);
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    console.error('[groq.service] estimateNutritionBatch: got empty/invalid array. Raw (first 200):', raw.slice(0, 200));
+    return batch.map(() => null);
+  }
+
+  if (parsed.length < batch.length) {
+    console.warn('[groq.service] estimateNutritionBatch: got ' + parsed.length + '/' + batch.length + ' items — response was likely truncated.');
+  }
+
+  return batch.map((_, i) => {
+    const item = parsed[i] || null;
+    if (item) {
+      item.source = 'ai';
+      // Normalise confidence: if model returns 0-1 decimal, convert to 0-100
+      if (typeof item.confidence === 'number' && item.confidence <= 1) {
+        item.confidence = Math.round(item.confidence * 100);
+      }
+    }
+    return item;
+  });
+}
+
+export async function estimateNutritionBatch(dishes) {
+  if (!dishes || dishes.length === 0) return [];
+
+  // Process in sub-batches of 5 to stay well within token limits
+  const NUTRITION_BATCH_SIZE = 5;
+  const allResults = [];
+
+  for (let i = 0; i < dishes.length; i += NUTRITION_BATCH_SIZE) {
+    const batch = dishes.slice(i, i + NUTRITION_BATCH_SIZE);
+    const batchNum = Math.floor(i / NUTRITION_BATCH_SIZE) + 1;
+    const totalBatches = Math.ceil(dishes.length / NUTRITION_BATCH_SIZE);
+    console.log('[groq.service] Nutrition batch ' + batchNum + '/' + totalBatches + ' (' + batch.length + ' dishes)');
+
+    try {
+      const results = await callNutritionBatch(batch);
+      allResults.push(...results);
+    } catch (err) {
+      console.error('[groq.service] Nutrition batch ' + batchNum + ' failed:', err.status || '', err.message);
+      // Fill failed batch slots with null so indices stay aligned
+      allResults.push(...batch.map(() => null));
+    }
+  }
+
+  return allResults;
 }

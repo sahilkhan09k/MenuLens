@@ -52,6 +52,8 @@ const dishSchema = new Schema({
   // Dish-level save — user bookmarks individual dishes
   isSaved: { type: Boolean, default: false },
   savedAt: Date,
+  // Denormalized from parent Scan at save time so restaurant name persists even if Scan is deleted
+  restaurantName: { type: String, default: null },
   // Food photo fetched from Unsplash and re-hosted on Cloudinary (CORS-safe for html2canvas)
   dishImageUrl: { type: String, default: null },
   // All three portion tiers from DB (small/standard/large) — used by UI picker
